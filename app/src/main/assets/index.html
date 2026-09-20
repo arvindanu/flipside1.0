@@ -461,7 +461,7 @@
   // Total points (all runs added together) needed to unlock each extra map.
   // The original map is always unlocked.
   const FOREST_UNLOCK = 5000;
-  const ROCKY_UNLOCK = 10000;
+  const ROCKY_UNLOCK = 6000;
 
   // Mix two #rrggbb colours; t is the share of a.
   const mixHex = (a, b, t) => {
@@ -1015,8 +1015,6 @@
   let sfxMaster = null;
   let compressor = null;
   let music = null;
-  let musicGain = null;
-  let musicSource = null;
 
   // Master SFX volume. The original SFX were quite quiet.
   const SFX_VOLUME = 2.0;
@@ -1024,12 +1022,40 @@
   // Background music volume. The supplied track is already mastered fairly loud.
   const MUSIC_VOLUME = 0.18;
 
+  // Create the HTML audio element independently from Web Audio. If Web Audio
+  // fails on a particular WebView, background music must still be able to play.
+  function ensureMusic() {
+    if (music) return music;
+    try {
+      const src = new URL('music.mp3', window.location.href).href;
+      music = new Audio(src);
+      music.loop = true;
+      music.preload = 'auto';
+      music.autoplay = false;
+      music.volume = MUSIC_VOLUME;
+      music.muted = false;
+      music.setAttribute('playsinline', '');
+      music.addEventListener('error', () => {
+        console.warn('Flipside: music.mp3 could not be loaded:', music.error);
+      });
+      music.load();
+    } catch (e) {
+      music = null;
+    }
+    return music;
+  }
+
   function audio() {
-    if (!soundOn || !ytAudioEnabled) return null;
+    if (!soundOn || (ytInPlayables() && !ytAudioEnabled)) return null;
+
+    // Always prepare the music element, even if Web Audio is unavailable.
+    ensureMusic();
 
     if (!actx) {
       try {
-        actx = new (window.AudioContext || window.webkitAudioContext)();
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) throw new Error('Web Audio API unavailable');
+        actx = new AC();
 
         // Separate SFX master bus.
         sfxMaster = actx.createGain();
@@ -1045,22 +1071,11 @@
 
         sfxMaster.connect(compressor);
         compressor.connect(actx.destination);
-
-        // Background music.
-        // Keep music as a normal HTMLAudioElement. This is more reliable
-        // than routing a local file through createMediaElementSource() in Android WebView.
-        music = new Audio('music.mp3');
-        music.loop = true;
-        music.preload = 'auto';
-        music.volume = MUSIC_VOLUME;
-        music.setAttribute('playsinline', '');
       } catch (e) {
+        // Do not destroy the HTML music player if Web Audio is unavailable.
         actx = null;
         sfxMaster = null;
         compressor = null;
-        music = null;
-        musicGain = null;
-        musicSource = null;
       }
     }
 
@@ -1072,17 +1087,26 @@
   }
 
   function startMusic() {
-    if (!soundOn || !ytAudioEnabled || !music) return;
+    if (!soundOn || (ytInPlayables() && !ytAudioEnabled)) return;
 
     const a = audio();
     if (a && a.state === 'suspended') {
       a.resume().catch(() => {});
     }
 
-    // Play after the Play button's user gesture.
-    music.play().catch((e) => {
-      console.log('Background music could not start:', e);
-    });
+    const m = ensureMusic();
+    if (!m) return;
+
+    // This function is reached from a real Play/Resume tap, so playback is
+    // inside the user's gesture on Android WebView.
+    m.volume = MUSIC_VOLUME;
+    m.muted = false;
+    const promise = m.play();
+    if (promise && typeof promise.catch === 'function') {
+      promise.catch((e) => {
+        console.warn('Flipside: background music could not start:', e);
+      });
+    }
   }
 
   function pauseMusic() {
@@ -1092,7 +1116,7 @@
   function stopMusic() {
     if (music) {
       music.pause();
-      music.currentTime = 0;
+      try { music.currentTime = 0; } catch (e) { /* ignore */ }
     }
   }
 
@@ -1974,6 +1998,7 @@
     ovSound.textContent = soundOn ? 'Sound on' : 'Sound off';
     if (soundOn) {
       audio();
+      ensureMusic();
       beep(520, 780, 0.08, 'square', 0.055);
       if (state === 'playing') startMusic();
       else pauseMusic();
