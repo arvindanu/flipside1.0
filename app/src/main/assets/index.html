@@ -80,9 +80,11 @@
     align-items: center;
     justify-content: center;
     gap: 1px;
+    gap: calc(var(--bb, 46px) * 0.02);
     padding: 0;
     border-radius: 50%;
     border: 2px solid rgba(255, 227, 236, 0.6);
+    border-width: max(2px, calc(var(--bb, 46px) * 0.03));
     background: var(--deep);
     color: rgba(255, 227, 236, 0.7);
     cursor: pointer;
@@ -93,10 +95,10 @@
   .boostbtn .ring circle { fill: none; stroke-width: 6; }
   .boostbtn .ring .track { stroke: rgba(255, 227, 236, 0.16); }
   .boostbtn .ring .prog { stroke: currentColor; stroke-linecap: round; stroke-dasharray: 289; stroke-dashoffset: 0; }
-  .boostbtn .ico { position: relative; width: 52%; height: 52%; }
-  .boostbtn .lbl { position: relative; font-size: 8px; font-weight: 800; letter-spacing: 0; line-height: 1; }
+  .boostbtn .ico { position: relative; width: 48%; height: 48%; }
+  .boostbtn .lbl { position: relative; font-size: 8px; font-size: calc(var(--bb, 46px) * 0.17); font-weight: 800; letter-spacing: 0; line-height: 1; }
   .boostbtn.ready { color: var(--sun); border-color: var(--sun); }
-  .boostbtn::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid rgba(255, 210, 63, 0.6); opacity: 0; pointer-events: none; }
+  .boostbtn::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid rgba(255, 210, 63, 0.6); border-width: max(2px, calc(var(--bb, 46px) * 0.03)); opacity: 0; pointer-events: none; }
   .boostbtn.ready::after { animation: boostpulse 1.6s ease-out infinite; will-change: transform, opacity; }
   .boostbtn.cool { color: rgba(255, 227, 236, 0.7); }
   .boostbtn.active { color: var(--pink); border-color: var(--pink); }
@@ -104,7 +106,7 @@
   .boostbtn:focus-visible { outline: 3px solid var(--blush); outline-offset: 3px; }
   @keyframes boostpulse {
     0% { transform: scale(1); opacity: 0.6; }
-    70%, 100% { transform: scale(1.5); opacity: 0; }
+    70%, 100% { transform: scale(1.3); opacity: 0; }
   }
   @media (prefers-reduced-motion: reduce) { .boostbtn.ready::after { animation: none; } }
   @media (max-height: 520px) {
@@ -1368,6 +1370,7 @@
   let G = G0, VMAX = V0, KICK = KICK0;
   let scx = 1, scy = 1, sx = 1, sy = 1;            // canvas scale, and css px per logical px
   let hudY = 24, hudL = 20, hudR = 60, insB = 0;
+  const BOOST_BTN_ALIGN = 'right';   // where the boost button sits in the bottom wall: 'right' or 'center'
   let lastCssW = 0, lastCssH = 0;
   // Canvas resolution. Phones get a pixel budget, and the game lowers it by itself if a phone can't hold about 45 fps.
   const PIXEL_BUDGET = 1.1e6;   // canvas pixels we aim for
@@ -1435,14 +1438,24 @@
     pauseBtn.style.right = Math.round(ins.r + 10) + 'px';
 
     // bottom row: best score on the left, boost button on the right
+    // The bottom wall is otherwise empty, so the boost button fills it: as tall as the wall allows, with a little breathing room.
     const bandBotCss = (H - BOT) * sy;
-    const bb = clamp(Math.round(bandBotCss * 0.8), 30, 46);
-    const botOffCss = clamp(Math.min(bandBotCss / 2, 22 + bb / 2), bb / 2 + 4, Math.max(bb / 2 + 4, bandBotCss - ins.b - bb / 2 - 8));
-    botY = BOT + botOffCss / sy;
+    const room = Math.max(20, bandBotCss - ins.b);
+    const pad = clamp(room * 0.09, 5, 12);
+    let bb = clamp(Math.round(room - 2 * pad), 34, 118);
+    if (bb > room - 1) bb = Math.max(24, Math.floor(room - 1));
+    botY = BOT + room / 2 / sy;
     boostBtn.style.width = bb + 'px';
     boostBtn.style.height = bb + 'px';
-    boostBtn.style.top = Math.round(BOT * sy + botOffCss - bb / 2) + 'px';
-    boostBtn.style.right = Math.round(ins.r + 10) + 'px';
+    boostBtn.style.setProperty('--bb', bb + 'px');
+    boostBtn.style.top = Math.round(BOT * sy + (room - bb) / 2) + 'px';
+    if (BOOST_BTN_ALIGN === 'center') {
+      boostBtn.style.right = 'auto';
+      boostBtn.style.left = Math.round(cssW / 2 - bb / 2) + 'px';
+    } else {
+      boostBtn.style.left = 'auto';
+      boostBtn.style.right = Math.round(ins.r + Math.max(10, pad)) + 'px';
+    }
 
     return big;
   }
