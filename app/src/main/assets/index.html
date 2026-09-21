@@ -1421,7 +1421,7 @@
     scx = canvas.width / W; scy = canvas.height / H;
     sx = cssW / W; sy = cssH / H;
     const layerKey = scx + '|' + scy + '|' + W + '|' + H + '|' + TOP + '|' + BOT;
-    if (layerKey !== lastLayerKey) { lastLayerKey = layerKey; spriteGen++; spritePool.length = 0; }   // cached sprites no longer fit
+    if (layerKey !== lastLayerKey) { lastLayerKey = layerKey; spriteGen++; spritePool.length = 0; gridPath = null; }   // cached sprites no longer fit
 
     // HUD row and the pause button share one line near the top
     const ins = readInsets();
@@ -1463,8 +1463,14 @@
   // ---------- state ----------
   let state = 'menu';   // menu | maps | sprites | settings | playing | paused | over
   let clock = 0, world = 0;
-  const p = { y: 0, vy: 0, dir: 1, grounded: true, squash: 0, buffer: 0, hist: [] };
+  const p = { y: 0, vy: 0, dir: 1, grounded: true, squash: 0, buffer: 0, hist: [], histHead: 0, histCount: 0 };
   let obstacles = [], orbs = [], parts = [];
+  // Reuse short-lived particle/floaters objects instead of allocating and splicing during gameplay.
+  const particlePool = [];
+  const floaterPool = [];
+  const MAX_PARTICLES = 140;
+  const MAX_FLOATERS = 6;
+  let gridPath = null, gridPathW = 0, gridPathH = 0;
   let run = { t: 0, dist: 0, bonus: 0, speed: 0 };
   let cursor = 0, nextSide = 'floor', sameRun = 0;
   let shake = 0, finalScore = 0, isNewBest = false, overlayReady = false, crashClock = 0;
@@ -1481,10 +1487,13 @@
   function resetRun() {
     spriteHead = 1;
     for (const o of obstacles) releaseSprite(o);
-    obstacles = []; orbs = []; parts = [];
+    obstacles = []; orbs = []; parts.length = 0;
+    particlePool.length = 0;
+    floaters.length = 0;
+    floaterPool.length = 0;
     run = { t: 0, dist: 0, bonus: 0, speed: BASE * K, banked: 0 };
     p.dir = 1; p.y = BOT - S; p.vy = 0; p.grounded = true;
-    p.squash = 0; p.buffer = 0; p.hist.length = 0;
+    p.squash = 0; p.buffer = 0; p.hist.length = 0; p.histHead = 0; p.histCount = 0;
     cursor = W + 220 * K; nextSide = 'floor'; sameRun = 0;
     shake = 0; isNewBest = false; overlayReady = false;
     soul = 100; soulFlash = 0; lowWarned = false; deathReason = 'block'; lastMegaT = -999;
@@ -1701,25 +1710,30 @@
 
   // ---------- particles ----------
   function burst(x, y, n, colors, speed, life, bias) {
-    for (let i = 0; i < n; i++) {
-      parts.push({
-        x, y,
-        vx: (Math.random() - 0.5) * speed * 2 + (bias || 0),
-        vy: (Math.random() - 0.5) * speed * 2,
-        life, max: life,
-        s: rand(3, 8),
-        c: colors[i % colors.length]
-      });
+    const count = Math.min(n, Math.max(0, MAX_PARTICLES - parts.length));
+    for (let i = 0; i < count; i++) {
+      const q = particlePool.pop() || {};
+      q.x = x; q.y = y;
+      q.vx = (Math.random() - 0.5) * speed * 2 + (bias || 0);
+      q.vy = (Math.random() - 0.5) * speed * 2;
+      q.life = life; q.max = life;
+      q.s = rand(3, 8);
+      q.c = colors[i % colors.length];
+      parts.push(q);
     }
   }
   function updateParticles(dt) {
+    const drag = 1 - Math.min(1, 2.2 * dt);
     for (let i = parts.length - 1; i >= 0; i--) {
       const q = parts[i];
       q.x += q.vx * dt; q.y += q.vy * dt;
-      q.vx *= 1 - Math.min(1, 2.2 * dt);
-      q.vy *= 1 - Math.min(1, 2.2 * dt);
+      q.vx *= drag; q.vy *= drag;
       q.life -= dt;
-      if (q.life <= 0) parts.splice(i, 1);
+      if (q.life <= 0) {
+        const last = parts.pop();
+        if (last !== q) parts[i] = last;
+        if (particlePool.length < MAX_PARTICLES) particlePool.push(q);
+      }
     }
   }
 
@@ -1756,25 +1770,38 @@
       soul = 100;
       run.bonus += MEGA_POINTS;
       burst(ox, o.y, 28, [C.sun, C.blush, C.pink], 340, 0.7, 0);
-      floaters.push({ x: ox, y: o.y - 24, text: 'SOUL FULL', life: 1.2, max: 1.2, big: true });
+      addFloater(ox, o.y - 24, 'SOUL FULL', 1.2, true);
       sfxMega();
     } else {
       soul = Math.min(100, soul + SOUL_COIN_GAIN);
       run.bonus += ORB_POINTS;
       burst(ox, o.y, 12, [C.blush, C.sun, C.pink], 220, 0.5, 0);
-      floaters.push({ x: ox, y: o.y - 24, text: '+' + SOUL_COIN_GAIN + '%', life: 0.9, max: 0.9, big: false });
+      addFloater(ox, o.y - 24, '+' + SOUL_COIN_GAIN + '%', 0.9, false);
       sfxOrb();
     }
     soulFlash = 0.35;
     if (soul > 35) { lowWarned = false; stopFuelSiren(); }
   }
 
+  function addFloater(x, y, text, life, big) {
+    if (floaters.length >= MAX_FLOATERS) {
+      const f = floaters.shift();
+      floaterPool.push(f);
+    }
+    const f = floaterPool.pop() || {};
+    f.x = x; f.y = y; f.text = text; f.life = life; f.max = life; f.big = !!big;
+    floaters.push(f);
+  }
   function updateFloaters(dt) {
     for (let i = floaters.length - 1; i >= 0; i--) {
       const f = floaters[i];
       f.life -= dt;
       f.y -= 60 * dt;
-      if (f.life <= 0) floaters.splice(i, 1);
+      if (f.life <= 0) {
+        const last = floaters.pop();
+        if (last !== f) floaters[i] = last;
+        if (floaterPool.length < MAX_FLOATERS) floaterPool.push(f);
+      }
     }
   }
 
@@ -1785,7 +1812,7 @@
   function tryBoost() {
     if (state !== 'playing') return;
     if (boostMode === 'off' && !boostReady) {
-      floaters.push({ x: W / 2, y: (TOP + BOT) / 2 + 40, text: 'Boost ready in ' + fmtTime(boostCd), life: 1.1, max: 1.1, big: false });
+      addFloater(W / 2, (TOP + BOT) / 2 + 40, 'Boost ready in ' + fmtTime(boostCd), 1.1, false);
       return;
     }
     activateBoost();
@@ -1824,7 +1851,10 @@
     if (!reduce) burst(PX + S / 2 - 32, p.y + S / 2, 1, [C.sun, C.pink], 50, 0.3, -run.speed * 0.5);   // exhaust sparks
     if (boostT >= BOOST_DURATION) {
       // keep flying until there is a clear stretch ahead, then come down safely
-      const ahead = obstacles.find((o) => o.x + o.w > PX - 2);
+      let ahead = null;
+      for (let i = 0; i < obstacles.length; i++) {
+        if (obstacles[i].x + obstacles[i].w > PX - 2) { ahead = obstacles[i]; break; }
+      }
       // judged at normal speed, because that's the pace you come back down to
       const clear = !ahead || (ahead.x - (PX + S)) / Math.max(baseSpeed() * 1.15, 1) >= 0.45;
       if (clear || boostT >= BOOST_DURATION + 2.5) beginLanding(ahead);
@@ -1845,7 +1875,7 @@
       if (boostCd <= 0) {
         boostCd = 0;
         boostReady = true;
-        floaters.push({ x: W / 2, y: (TOP + BOT) / 2 - 80, text: 'BOOST READY', life: 1.4, max: 1.4, big: true });
+        addFloater(W / 2, (TOP + BOT) / 2 - 80, 'BOOST READY', 1.4, true);
         sfxBoostReady();
       }
     }
@@ -1979,8 +2009,9 @@
     spawnObstacles();
     if (boostMode === 'rocket') spawnBoostCoins();
 
-    p.hist.unshift(p.y);
-    if (p.hist.length > 8) p.hist.pop();
+    p.hist[p.histHead] = p.y;
+    p.histHead = (p.histHead + 1) & 7;
+    if (p.histCount < 8) p.histCount++;
 
     // coins
     const cx0 = PX, cx1 = PX + S, cy0 = p.y, cy1 = p.y + S;
@@ -2062,12 +2093,26 @@
     if (lite) return;
     ctx.fillStyle = 'rgba(255,255,255,0.12)';
     const gs = 44;
-    const off = (world * 0.3) % gs;
-    let row = 0;
-    for (let y = TOP + gs / 2; y < BOT; y += gs, row++) {
-      const shift = (row % 2) * gs / 2;
-      for (let x = -off - shift; x < W + gs; x += gs) circle(x, y, 2.6);
+    if (!gridPath || gridPathW !== W || gridPathH !== H) {
+      gridPath = new Path2D();
+      gridPathW = W; gridPathH = H;
+      let row = 0;
+      for (let y = TOP + gs / 2; y < BOT; y += gs, row++) {
+        const shift = (row % 2) * gs / 2;
+        for (let x = -gs; x < W + gs; x += gs) {
+          const cx = x + shift, cy = y, r = 2.6;
+          gridPath.moveTo(cx + r, cy);
+          gridPath.arc(cx, cy, r, 0, Math.PI * 2);
+        }
+      }
     }
+    const off = (world * 0.3) % gs;
+    ctx.save();
+    ctx.translate(-off, 0);
+    ctx.fill(gridPath);
+    ctx.translate(gs, 0);
+    ctx.fill(gridPath);
+    ctx.restore();
   }
 
   function drawObstacles() {
@@ -2140,12 +2185,13 @@
 
   function drawTrail() {
     if (reduce || lite || state !== 'playing' || boostMode === 'rocket') return;
-    const n = p.hist.length;
+    const n = p.histCount;
     for (let k = 1; k < n; k++) {
       const a = 0.24 * (1 - k / (n + 1));
       const s = S * (1 - k * 0.05);
+      const idx = (p.histHead - 1 - k + 8) & 7;
       ctx.fillStyle = 'rgba(' + SP.trail + ',' + a.toFixed(3) + ')';
-      ctx.fillRect(PX + (S - s) / 2 - k * run.speed * 0.016, p.hist[k] + (S - s) / 2, s, s);
+      ctx.fillRect(PX + (S - s) / 2 - k * run.speed * 0.016, p.hist[idx] + (S - s) / 2, s, s);
     }
   }
 
@@ -2262,7 +2308,13 @@
     const hCss = 14;
     ctx.font = '800 ' + Math.round(12 * uy) + 'px ' + FONT;
     const label = 'SOUL';
-    const labelW = ctx.measureText(label).width;
+    const soulFont = '800 ' + Math.round(12 * uy) + 'px ' + FONT;
+    if (soulLabelFontCache !== soulFont) {
+      ctx.font = soulFont;
+      soulLabelWCache = ctx.measureText(label).width;
+      soulLabelFontCache = soulFont;
+    }
+    const labelW = soulLabelWCache;
     const gap = 10 * ux;
     const left = hudL;
     const right = W - hudR;
@@ -2374,7 +2426,7 @@
   }
 
   // ---------- ui ----------
-  let boostUiCache = '';
+  let boostUiCache = '', soulLabelWCache = -1, soulLabelFontCache = '';
   function fmtTime(sec) {
     const t = Math.max(0, Math.ceil(sec));
     return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
@@ -2612,7 +2664,7 @@
     render();
     updateBoostUi();
 
-    if (typeof ytgame !== 'undefined') {
+    if (typeof ytgame !== 'undefined' && (!ytReadyNotified || (!ytGameReadyNotified && state !== 'paused' && !splashActive))) {
       try {
         if (!ytReadyNotified) {
           ytgame.game.firstFrameReady();
