@@ -206,15 +206,6 @@
     letter-spacing: -0.02em;
     color: var(--sun);
   }
-  .mapnew {
-    margin: 0;
-    padding: 8px 14px;
-    border-radius: 12px;
-    background: var(--sun);
-    color: var(--deep);
-    font-weight: 800;
-    font-size: 15px;
-  }
   .maplist { width: 100%; display: flex; flex-direction: column; gap: 10px; }
   .mapcard {
     display: flex;
@@ -406,6 +397,10 @@
   @media (min-aspect-ratio: 1/1) {
     .splash img { transform: translateY(3.3%) scale(2.4); transform-origin: 50% 46.7%; }
   }
+  .mapstate.buy { border: 1.5px solid var(--sun); color: var(--sun); }
+  .mapstate.confirm { background: var(--pink); color: var(--deep); }
+  .mapcard.buy, .spritecard.buy { border-color: var(--sun); }
+  .mapcard.confirm, .spritecard.confirm { border-color: var(--pink); background: rgba(255, 92, 147, 0.16); }
 </style>
 </head>
 <body>
@@ -432,10 +427,9 @@
     <div class="mapwrap">
       <h2 class="title sm">Choose a map</h2>
       <div class="maptotal" aria-live="polite">
-        <span class="lab">Total score</span>
+        <span class="lab">Points</span>
         <span class="num" id="mapTotal">0</span>
       </div>
-      <p class="mapnew" id="mapNew" hidden></p>
       <div class="maplist" id="mapList" role="radiogroup" aria-label="Maps"></div>
       <p class="mapmsg" id="mapMsg" aria-live="polite"></p>
       <div class="actions">
@@ -450,10 +444,9 @@
     <div class="mapwrap">
       <h2 class="title sm">Sprites</h2>
       <div class="maptotal" aria-live="polite">
-        <span class="lab">Total score</span>
+        <span class="lab">Points</span>
         <span class="num" id="spriteTotal">0</span>
       </div>
-      <p class="mapnew" id="spriteNew" hidden></p>
       <div class="spritelist" id="spriteList" role="radiogroup" aria-label="Sprites"></div>
       <p class="mapmsg" id="spriteMsg" aria-live="polite"></p>
       <div class="actions">
@@ -517,10 +510,10 @@
   const ovStats = $('ovStats'), ovBtn = $('ovBtn'), ovSound = $('ovSound');
   const pauseBtn = $('pauseBtn'), probe = $('probe');
   const boostBtn = $('boostBtn'), boostRing = $('boostRing'), boostLbl = $('boostLbl');
-  const mapOverlay = $('mapOverlay'), mapList = $('mapList'), mapTotal = $('mapTotal'), mapNew = $('mapNew');
+  const mapOverlay = $('mapOverlay'), mapList = $('mapList'), mapTotal = $('mapTotal');
   const mapMsg = $('mapMsg'), mapPlay = $('mapPlay'), mapBack = $('mapBack'), ovMaps = $('ovMaps');
   const homeMenu = $('homeMenu'), homeMaps = $('homeMaps'), homeSprites = $('homeSprites'), homeSettings = $('homeSettings');
-  const spriteOverlay = $('spriteOverlay'), spriteList = $('spriteList'), spriteTotal = $('spriteTotal'), spriteNew = $('spriteNew');
+  const spriteOverlay = $('spriteOverlay'), spriteList = $('spriteList'), spriteTotal = $('spriteTotal');
   const spriteMsg = $('spriteMsg'), spriteBack = $('spriteBack');
   const settingsOverlay = $('settingsOverlay'), setSound = $('setSound'), setSoundLbl = $('setSoundLbl'), setSoundDesc = $('setSoundDesc'), setBack = $('setBack');
 
@@ -635,10 +628,10 @@
   ytInit();
 
   // ---------- maps ----------
-  // Total points (all runs added together) needed to unlock each extra map.
-  // The original map is always unlocked.
-  const FOREST_UNLOCK = 5000;
-  const ROCKY_UNLOCK = 6000;
+  // Prices, in points. Points come from your runs and are SPENT when you buy something.
+  // The original map is free and always yours.
+  const FOREST_PRICE = 5000;
+  const ROCKY_PRICE = 6000;
 
   // Mix two #rrggbb colours; t is the share of a.
   const mixHex = (a, b, t) => {
@@ -656,12 +649,12 @@
 
   const MAPS = [
     {
-      id: 'classic', name: 'Classic', need: 0, style: null,
+      id: 'classic', name: 'Classic', price: 0, style: null,
       blurb: 'The original pink blocks.',
       theme: { ink: '#2431D6', deep: '#141A7A', hill: 'rgba(20,26,122,0.32)', pshadow: 'rgba(20,26,122,0.7)', scrim: 'rgba(20,26,122,0.62)' }
     },
     {
-      id: 'forest', name: 'Forest', need: FOREST_UNLOCK, style: 'forest',
+      id: 'forest', name: 'Forest', price: FOREST_PRICE, style: 'forest',
       blurb: 'Pine and oak trees.',
       theme: {
         ink: '#1C6B57', deep: '#0C3A30', hill: 'rgba(8,50,40,0.34)', pshadow: 'rgba(8,40,32,0.7)', scrim: 'rgba(8,52,42,0.62)',
@@ -669,7 +662,7 @@
       }
     },
     {
-      id: 'rocky', name: 'Rocky', need: ROCKY_UNLOCK, style: 'rocky',
+      id: 'rocky', name: 'Rocky', price: ROCKY_PRICE, style: 'rocky',
       blurb: 'Jagged boulders.',
       theme: {
         ink: '#553F8E', deep: '#2A1D52', hill: 'rgba(28,16,64,0.34)', pshadow: 'rgba(24,14,54,0.7)', scrim: 'rgba(38,24,78,0.62)',
@@ -678,16 +671,22 @@
     }
   ];
   for (const m of MAPS) m.theme.shadowSolid = mixHex(m.theme.deep, m.theme.ink, 0.55);
-  const UNLOCKABLES = [];   // everything that unlocks with points: maps and sprites
+  const UNLOCKABLES = [];   // everything you can buy with points: maps and sprites
   for (const m of MAPS) { m.kind = 'map'; UNLOCKABLES.push(m); }
 
   const mapById = (id) => MAPS.find((m) => m.id === id) || MAPS[0];
-  let totalScore = parseInt(store.get('flipside-total') || '0', 10) || 0;
-  const mapUnlocked = (m) => totalScore >= m.need;
-  let currentMap = mapById(store.get('flipside-map') || 'classic');   // the map you last played
-  if (!mapUnlocked(currentMap)) currentMap = MAPS[0];
-  let pickMap = currentMap;                                            // the card highlighted on the selection screen
-  let T = currentMap.theme;                                            // colours of the map on screen
+  // ---------- wallet: your points and what you own ----------
+  // Points are earned from runs and SPENT on maps and sprites. What you own is a saved record (not something worked
+  // out from your balance), so spending points can never take an unlock away. The balance and the owned list are
+  // saved together in ONE write, so they can never disagree, even if the app is closed mid-purchase.
+  const WALLET_KEY = 'flipside-wallet';
+  let points = 0;                    // spendable balance
+  const owned = new Set();           // ids of everything you have bought (the free originals are always in here)
+  const hinted = new Set();          // items already announced as "you can now afford this", so it never nags
+  const isOwned = (m) => owned.has(m.id);
+  let currentMap = MAPS[0];          // the map you last played (restored from storage by initWallet)
+  let pickMap = MAPS[0];             // the card highlighted on the selection screen
+  let T = MAPS[0].theme;             // colours of the map on screen
 
   function applyTheme(m) {
     T = m.theme;
@@ -700,37 +699,77 @@
   }
   applyTheme(currentMap);
 
-  // Every run adds its score to the running total. Already-banked points are remembered so pausing,
+  function saveWallet() {
+    store.set(WALLET_KEY, JSON.stringify({ v: 1, points, owned: Array.from(owned), hinted: Array.from(hinted) }));
+  }
+
+  // Spend points on an item. Returns 'ok', 'owned' or 'poor'. Nothing changes unless it returns 'ok'.
+  function buy(item) {
+    if (owned.has(item.id)) return 'owned';
+    if (!(points >= item.price)) return 'poor';
+    points -= item.price;
+    owned.add(item.id);
+    saveWallet();
+    return 'ok';
+  }
+
+  // Every run adds its score to your points. Already-banked points are remembered so pausing,
   // leaving the app or crashing can never count the same points twice.
   function bankRun() {
     const s = score();
     const d = s - (run.banked || 0);
     if (d > 0) {
-      totalScore += d;
+      points += d;
       run.banked = s;
-      store.set('flipside-total', totalScore);
+      saveWallet();
     }
   }
 
-  // Maps unlocked since the player last heard about it.
-  const seenUnlocks = new Set((store.get('flipside-unlock-seen') || '').split(',').filter(Boolean));
-  function takeNewUnlocks() {
-    const fresh = UNLOCKABLES.filter((m) => m.need > 0 && mapUnlocked(m) && !seenUnlocks.has(m.id));
+  // Items you could not afford before but can now. Each one is announced once, so it never becomes nagging.
+  function takeNewAffordable() {
+    const fresh = UNLOCKABLES.filter((u) => u.price > 0 && !owned.has(u.id) && points >= u.price && !hinted.has(u.id));
     if (fresh.length) {
-      fresh.forEach((m) => seenUnlocks.add(m.id));
-      store.set('flipside-unlock-seen', Array.from(seenUnlocks).join(','));
+      fresh.forEach((u) => hinted.add(u.id));
+      saveWallet();
     }
     return fresh;
   }
   const listNames = (a) => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]);
-  const unlockText = (fresh) => {
-    const maps = fresh.filter((m) => m.kind === 'map').map((m) => m.name);
-    const skins = fresh.filter((m) => m.kind === 'sprite').map((m) => m.name);
-    const parts = [];
-    if (maps.length) parts.push(listNames(maps) + (maps.length > 1 ? ' maps' : ' map'));
-    if (skins.length) parts.push(listNames(skins) + (skins.length > 1 ? ' sprites' : ' sprite'));
-    return parts.join(' and ') + ' unlocked!';
-  };
+  const affordText = (fresh) => 'You can now buy ' + listNames(fresh.map((u) => u.name + (u.kind === 'map' ? ' map' : ' sprite'))) + '!';
+
+  // Load the wallet. Runs once, after the maps AND the sprites exist.
+  function initWallet() {
+    let loaded = false;
+    const raw = store.get(WALLET_KEY);
+    if (raw) {
+      try {
+        const w = JSON.parse(raw);
+        if (w && typeof w === 'object') {
+          points = Number.isFinite(w.points) ? Math.max(0, Math.floor(w.points)) : 0;
+          if (Array.isArray(w.owned)) for (const id of w.owned) owned.add(id);
+          if (Array.isArray(w.hinted)) for (const id of w.hinted) hinted.add(id);
+          loaded = true;
+        }
+      } catch (e) { loaded = false; }
+    }
+    if (!loaded) {
+      // First launch with purchases. The old running total becomes your points, and anything it had already
+      // unlocked stays yours for free (nobody loses a map or skin they were already using).
+      const legacy = Math.max(0, parseInt(store.get('flipside-total') || '0', 10) || 0);
+      points = legacy;
+      for (const u of UNLOCKABLES) if (u.price <= legacy) owned.add(u.id);
+    }
+    for (const u of UNLOCKABLES) if (u.price === 0) owned.add(u.id);            // the originals are always yours
+    for (const id of Array.from(owned)) if (!UNLOCKABLES.some((u) => u.id === id)) owned.delete(id);   // forget unknown ids
+    if (!loaded) saveWallet();
+
+    currentMap = mapById(store.get('flipside-map') || 'classic');
+    if (!isOwned(currentMap)) currentMap = MAPS[0];
+    pickMap = currentMap;
+    applyTheme(currentMap);
+    SP = spriteById(store.get('flipside-sprite') || 'sunny');
+    if (!isOwned(SP)) SP = SPRITES[0];
+  }
 
   // ----- obstacle shapes -----
   // Shapes live in "wall space": u runs along the wall (0..w) and t runs from the wall towards the tip (0..h).
@@ -1000,55 +1039,118 @@
     g.beginPath(); g.arc(160, (top + bot) / 2, 9, 0, Math.PI * 2); g.fill();
   }
 
+  // ----- buying: shared by the Maps and Sprites screens -----
+  const CONFIRM_MS = 3500;        // how long the "tap again" question stays open
+  const CONFIRM_MIN_MS = 450;     // a second tap sooner than this is a double-tap, not a confirmation
+  let confirmId = null, confirmAt = 0, confirmTimer = 0;
+  function cancelConfirm() { confirmId = null; clearTimeout(confirmTimer); confirmTimer = 0; }
+
+  // What a card shows: 'owned', 'locked' (cannot afford yet), 'buy' (can afford) or 'confirm' (asked to confirm).
+  function cardMode(item) {
+    if (owned.has(item.id)) return 'owned';
+    if (points < item.price) return 'locked';
+    return confirmId === item.id ? 'confirm' : 'buy';
+  }
+
+  function makeCard(kind, item) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = kind === 'map' ? 'mapcard' : 'spritecard';
+    card.dataset[kind] = item.id;
+    card.setAttribute('role', 'radio');
+    const tail =
+      '<span class="mapneed"></span><span class="mapdesc"></span>' +
+      '<span class="mapbar"><i></i></span><span class="mapprog"></span>';
+    card.innerHTML = kind === 'map'
+      ? '<canvas class="mapthumb" width="232" height="136" aria-hidden="true"></canvas>' +
+        '<span class="mapinfo"><span class="maphead"><span class="mapname">' + item.name + '</span><span class="mapstate"></span><span class="mapsel">Selected</span></span>' + tail + '</span>'
+      : '<canvas class="spritethumb" width="176" height="128" aria-hidden="true"></canvas>' +
+        '<span class="maphead"><span class="mapname">' + item.name + '</span></span>' +
+        '<span class="maphead"><span class="mapstate"></span><span class="mapsel">Selected</span></span>' + tail;
+    card._r = {
+      state: card.querySelector('.mapstate'), need: card.querySelector('.mapneed'), desc: card.querySelector('.mapdesc'),
+      bar: card.querySelector('.mapbar'), fill: card.querySelector('.mapbar i'), prog: card.querySelector('.mapprog'), pill: '', label: ''
+    };
+    if (kind === 'map') drawMapThumb(card.querySelector('canvas'), item); else drawSpriteThumb(card.querySelector('canvas'), item);
+    return card;
+  }
+
+  const setText = (el, t) => { if (el.textContent !== t) el.textContent = t; };
+
+  // Bring one card up to date with the wallet. Only touches the page when something actually changed.
+  function paintCard(card, item, picked) {
+    const r = card._r, mode = cardMode(item), kindWord = item.kind === 'map' ? 'map' : 'sprite';
+    let pill, cls, need, desc = '';
+    if (mode === 'owned') { pill = 'Unlocked'; cls = 'on'; need = item.price > 0 ? 'Purchased' : 'Always unlocked'; desc = item.blurb; }
+    else if (mode === 'locked') { pill = LOCK_SVG + 'Locked'; cls = 'off'; need = 'Costs ' + fmtNum(item.price) + ' points'; }
+    else if (mode === 'buy') { pill = 'Buy'; cls = 'buy'; need = 'Costs ' + fmtNum(item.price) + ' points'; desc = 'Tap to buy'; }
+    else { pill = 'Confirm?'; cls = 'confirm'; need = 'Costs ' + fmtNum(item.price) + ' points'; desc = 'Tap again to spend them'; }
+    card.classList.toggle('locked', mode === 'locked');
+    card.classList.toggle('buy', mode === 'buy');
+    card.classList.toggle('confirm', mode === 'confirm');
+    card.classList.toggle('picked', picked);
+    card.setAttribute('aria-checked', picked ? 'true' : 'false');
+    if (r.pill !== pill) { r.pill = pill; r.state.innerHTML = pill; }
+    if (r.state.className !== 'mapstate ' + cls) r.state.className = 'mapstate ' + cls;
+    setText(r.need, need);
+    setText(r.desc, desc);
+    r.desc.hidden = !desc;
+    const showBar = mode === 'locked';
+    r.bar.hidden = !showBar; r.prog.hidden = !showBar;
+    if (showBar) {
+      r.fill.style.width = Math.min(100, Math.floor((points / item.price) * 100)) + '%';
+      setText(r.prog, fmtNum(points) + ' / ' + fmtNum(item.price));
+    }
+    const label = item.name + ' ' + kindWord + ', ' + (mode === 'owned' ? 'unlocked' : mode === 'locked' ? 'locked' : 'available to buy') + '. ' + need + '.';
+    if (r.label !== label) { r.label = label; card.setAttribute('aria-label', label); }
+  }
+
+  function shakeCard(card) { card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake'); }
+
+  // A tap on something you do not own yet: not enough points -> say so; first tap -> ask; second tap -> buy.
+  function buyTap(item, card, msg, refresh, onBought) {
+    const now = Date.now();
+    if (points < item.price) {
+      cancelConfirm();
+      msg.textContent = 'Not enough points for ' + item.name + '. You need ' + fmtNum(item.price - points) + ' more.';
+      shakeCard(card);
+      refresh();
+      return;
+    }
+    if (confirmId !== item.id) {
+      confirmId = item.id; confirmAt = now;
+      clearTimeout(confirmTimer);
+      confirmTimer = setTimeout(() => { confirmId = null; msg.textContent = ''; refresh(); }, CONFIRM_MS);
+      msg.textContent = 'Tap ' + item.name + ' again to spend ' + fmtNum(item.price) + ' points.';
+      refresh();
+      return;
+    }
+    if (now - confirmAt < CONFIRM_MIN_MS) return;
+    cancelConfirm();
+    if (buy(item) !== 'ok') { msg.textContent = 'Could not buy ' + item.name + '.'; refresh(); return; }
+    onBought(item);
+    msg.textContent = item.name + ' unlocked for ' + fmtNum(item.price) + ' points. ' + fmtNum(points) + ' points left.';
+    refresh();
+  }
+
   // ----- the map selection screen -----
   const LOCK_SVG = '<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M17 9V7a5 5 0 0 0-10 0v2H5v12h14V9h-2zm-8 0V7a3 3 0 0 1 6 0v2H9z"/></svg>';
 
-  function buildMapCards() {
-    mapTotal.textContent = fmtNum(totalScore);
-    const fresh = takeNewUnlocks();
-    if (fresh.length) { mapNew.hidden = false; mapNew.textContent = unlockText(fresh); } else { mapNew.hidden = true; }
-    mapMsg.textContent = '';
-    mapList.innerHTML = '';
-    for (const m of MAPS) {
-      const open = mapUnlocked(m);
-      const card = document.createElement('button');
-      card.type = 'button';
-      card.className = 'mapcard' + (open ? '' : ' locked') + (m === pickMap ? ' picked' : '');
-      card.dataset.map = m.id;
-      card.setAttribute('role', 'radio');
-      card.setAttribute('aria-checked', m === pickMap ? 'true' : 'false');
-      const need = m.need > 0 ? 'Requires ' + fmtNum(m.need) + ' points' : 'Always unlocked';
-      card.setAttribute('aria-label', m.name + ' map, ' + (open ? 'unlocked' : 'locked') + '. ' + need + '.');
-      const pct = m.need > 0 ? Math.min(100, Math.floor((totalScore / m.need) * 100)) : 100;
-      card.innerHTML =
-        '<canvas class="mapthumb" width="232" height="136" aria-hidden="true"></canvas>' +
-        '<span class="mapinfo">' +
-          '<span class="maphead">' +
-            '<span class="mapname">' + m.name + '</span>' +
-            '<span class="mapstate ' + (open ? 'on' : 'off') + '">' + (open ? 'Unlocked' : LOCK_SVG + 'Locked') + '</span>' +
-            '<span class="mapsel">Selected</span>' +
-          '</span>' +
-          '<span class="mapneed">' + need + '</span>' +
-          (open
-            ? '<span class="mapdesc">' + m.blurb + '</span>'
-            : '<span class="mapbar"><i style="width:' + pct + '%"></i></span><span class="mapprog">' + fmtNum(totalScore) + ' / ' + fmtNum(m.need) + '</span>') +
-        '</span>';
-      mapList.appendChild(card);
-      drawMapThumb(card.querySelector('canvas'), m);
-    }
+  function refreshMapCards() {
+    mapTotal.textContent = fmtNum(points);
+    for (const card of mapList.children) paintCard(card, mapById(card.dataset.map), card.dataset.map === pickMap.id);
   }
-
-  function refreshPicks() {
-    for (const card of mapList.children) {
-      const on = card.dataset.map === pickMap.id;
-      card.classList.toggle('picked', on);
-      card.setAttribute('aria-checked', on ? 'true' : 'false');
-    }
+  // The cards are made once and reused every time the screen opens.
+  function buildMapCards() {
+    if (!mapList.children.length) for (const m of MAPS) mapList.appendChild(makeCard('map', m));
+    mapMsg.textContent = '';
+    refreshMapCards();
   }
 
   function showMaps() {
     if (state !== 'menu' && state !== 'over') return;
     state = 'maps';
+    cancelConfirm();
     stopMusic();
     resetRun();
     setUi();
@@ -1060,7 +1162,8 @@
   }
 
   function playPicked() {
-    if (state !== 'maps' || !mapUnlocked(pickMap)) return;
+    if (state !== 'maps' || !isOwned(pickMap)) return;
+    cancelConfirm();
     currentMap = pickMap;
     store.set('flipside-map', currentMap.id);
     applyTheme(currentMap);
@@ -1069,6 +1172,7 @@
 
   function backFromMaps() {
     if (state !== 'maps') return;
+    cancelConfirm();
     applyTheme(currentMap);
     toMenu();
   }
@@ -1077,40 +1181,37 @@
     const card = e.target.closest('.mapcard');
     if (!card) return;
     const m = mapById(card.dataset.map);
-    if (!mapUnlocked(m)) {
-      mapMsg.textContent = m.name + ' is locked. Reach ' + fmtNum(m.need) + ' total points to unlock it (you have ' + fmtNum(totalScore) + ').';
-      card.classList.remove('shake');
-      void card.offsetWidth;
-      card.classList.add('shake');
+    if (isOwned(m)) {
+      cancelConfirm();
+      pickMap = m;
+      applyTheme(m);
+      refreshMapCards();
+      mapMsg.textContent = m.name + ' selected.';
       return;
     }
-    pickMap = m;
-    applyTheme(m);
-    refreshPicks();
-    mapMsg.textContent = m.name + ' selected.';
+    buyTap(m, card, mapMsg, refreshMapCards, (item) => { pickMap = item; applyTheme(item); });   // a new map is selected right away
   });
   mapPlay.addEventListener('click', playPicked);
   mapBack.addEventListener('click', backFromMaps);
   ovMaps.addEventListener('click', () => { if (state === 'over' && overlayReady) showMaps(); });
 
   // ---------- sprites: cosmetic player skins ----------
-  // Total points needed for each skin. The first skin is the original look and is always unlocked.
+  // Price of each skin, in points. The first skin is the original look: free and always yours.
   // Skins only change how the player LOOKS. The hitbox and all gameplay stay exactly the same.
-  const SPRITE_UNLOCKS = [10000, 20000, 30000, 40000, 50000];
+  const SPRITE_PRICES = [10000, 20000, 30000, 40000, 50000];
   const SPRITES = [
-    { id: 'sunny', name: 'Sunny', need: 0, body: '#FFD23F', trail: '255,210,63', blurb: 'The original.', extra: null },
-    { id: 'ember', name: 'Ember', need: SPRITE_UNLOCKS[0], body: '#FF8A2B', hi: '#FFC38A', trail: '255,138,43', blurb: 'A little flame on top.', extra: 'flame' },
-    { id: 'frost', name: 'Frost', need: SPRITE_UNLOCKS[1], body: '#8FEFFF', hi: '#E9FCFF', trail: '143,239,255', blurb: 'Ice spikes, cool head.', extra: 'spikes' },
-    { id: 'slime', name: 'Slime', need: SPRITE_UNLOCKS[2], body: '#C6F03A', hi: '#EEFFA6', trail: '198,240,58', blurb: 'Antennae included.', extra: 'antennae' },
-    { id: 'royal', name: 'Royal', need: SPRITE_UNLOCKS[3], body: '#F4F1FF', hi: '#FFFFFF', trail: '244,241,255', blurb: 'Wears the crown.', extra: 'crown' },
-    { id: 'golden', name: 'Golden', need: SPRITE_UNLOCKS[4], body: '#FFE7A0', hi: '#FFFFFF', rim: '#E8B923', trail: '255,224,120', blurb: 'Halo and sparkle.', extra: 'halo' }
+    { id: 'sunny', name: 'Sunny', price: 0, body: '#FFD23F', trail: '255,210,63', blurb: 'The original.', extra: null },
+    { id: 'ember', name: 'Ember', price: SPRITE_PRICES[0], body: '#FF8A2B', hi: '#FFC38A', trail: '255,138,43', blurb: 'A little flame on top.', extra: 'flame' },
+    { id: 'frost', name: 'Frost', price: SPRITE_PRICES[1], body: '#8FEFFF', hi: '#E9FCFF', trail: '143,239,255', blurb: 'Ice spikes, cool head.', extra: 'spikes' },
+    { id: 'slime', name: 'Slime', price: SPRITE_PRICES[2], body: '#C6F03A', hi: '#EEFFA6', trail: '198,240,58', blurb: 'Antennae included.', extra: 'antennae' },
+    { id: 'royal', name: 'Royal', price: SPRITE_PRICES[3], body: '#F4F1FF', hi: '#FFFFFF', trail: '244,241,255', blurb: 'Wears the crown.', extra: 'crown' },
+    { id: 'golden', name: 'Golden', price: SPRITE_PRICES[4], body: '#FFE7A0', hi: '#FFFFFF', rim: '#E8B923', trail: '255,224,120', blurb: 'Halo and sparkle.', extra: 'halo' }
   ];
   for (const s of SPRITES) s.kind = 'sprite';
   UNLOCKABLES.push(...SPRITES);
 
   const spriteById = (id) => SPRITES.find((s) => s.id === id) || SPRITES[0];
-  let SP = spriteById(store.get('flipside-sprite') || 'sunny');    // the skin you have equipped
-  if (!mapUnlocked(SP)) SP = SPRITES[0];
+  let SP = SPRITES[0];    // the skin you have equipped (restored from storage by initWallet)
   let spriteHead = 1;   // 1 = head up, -1 = head down; eases over when gravity flips so the extras flip with it
 
   function rrg(g, x, y, w, h, r) {
@@ -1249,59 +1350,33 @@
   }
 
   // ----- the sprites screen -----
+  function refreshSpriteCards() {
+    spriteTotal.textContent = fmtNum(points);
+    for (const card of spriteList.children) paintCard(card, spriteById(card.dataset.sprite), card.dataset.sprite === SP.id);
+  }
   function buildSpriteCards() {
-    spriteTotal.textContent = fmtNum(totalScore);
-    const fresh = takeNewUnlocks();
-    if (fresh.length) { spriteNew.hidden = false; spriteNew.textContent = unlockText(fresh); } else { spriteNew.hidden = true; }
+    if (!spriteList.children.length) for (const s of SPRITES) spriteList.appendChild(makeCard('sprite', s));
     spriteMsg.textContent = '';
-    spriteList.innerHTML = '';
-    for (const s of SPRITES) {
-      const open = mapUnlocked(s);
-      const card = document.createElement('button');
-      card.type = 'button';
-      card.className = 'spritecard' + (open ? '' : ' locked') + (s === SP ? ' picked' : '');
-      card.dataset.sprite = s.id;
-      card.setAttribute('role', 'radio');
-      card.setAttribute('aria-checked', s === SP ? 'true' : 'false');
-      const need = s.need > 0 ? 'Requires ' + fmtNum(s.need) + ' points' : 'Always unlocked';
-      card.setAttribute('aria-label', s.name + ' sprite, ' + (open ? 'unlocked' : 'locked') + '. ' + need + '.');
-      const pct = s.need > 0 ? Math.min(100, Math.floor((totalScore / s.need) * 100)) : 100;
-      card.innerHTML =
-        '<canvas class="spritethumb" width="176" height="128" aria-hidden="true"></canvas>' +
-        '<span class="maphead"><span class="mapname">' + s.name + '</span></span>' +
-        '<span class="maphead"><span class="mapstate ' + (open ? 'on' : 'off') + '">' + (open ? 'Unlocked' : LOCK_SVG + 'Locked') + '</span><span class="mapsel">Selected</span></span>' +
-        '<span class="mapneed">' + need + '</span>' +
-        (open
-          ? '<span class="mapdesc">' + s.blurb + '</span>'
-          : '<span class="mapbar"><i style="width:' + pct + '%"></i></span><span class="mapprog">' + fmtNum(totalScore) + ' / ' + fmtNum(s.need) + '</span>');
-      spriteList.appendChild(card);
-      drawSpriteThumb(card.querySelector('canvas'), s);
-    }
+    refreshSpriteCards();
   }
 
-  function refreshSpritePicks() {
-    for (const card of spriteList.children) {
-      const on = card.dataset.sprite === SP.id;
-      card.classList.toggle('picked', on);
-      card.setAttribute('aria-checked', on ? 'true' : 'false');
-    }
+  function equipSprite(s) {
+    SP = s;
+    store.set('flipside-sprite', s.id);
   }
 
   spriteList.addEventListener('click', (e) => {
     const card = e.target.closest('.spritecard');
     if (!card) return;
     const s = spriteById(card.dataset.sprite);
-    if (!mapUnlocked(s)) {
-      spriteMsg.textContent = s.name + ' is locked. Reach ' + fmtNum(s.need) + ' total points to unlock it (you have ' + fmtNum(totalScore) + ').';
-      card.classList.remove('shake');
-      void card.offsetWidth;
-      card.classList.add('shake');
+    if (isOwned(s)) {
+      cancelConfirm();
+      equipSprite(s);
+      refreshSpriteCards();
+      spriteMsg.textContent = s.name + ' equipped.';
       return;
     }
-    SP = s;
-    store.set('flipside-sprite', s.id);
-    refreshSpritePicks();
-    spriteMsg.textContent = s.name + ' equipped.';
+    buyTap(s, card, spriteMsg, refreshSpriteCards, equipSprite);   // a new skin is equipped right away
   });
 
   // ----- settings -----
@@ -1341,6 +1416,7 @@
   function showSprites() {
     if (state !== 'menu') return;
     state = 'sprites';
+    cancelConfirm();
     buildSpriteCards();
     overlay.hidden = true;
     spriteOverlay.hidden = false;
@@ -1355,7 +1431,7 @@
   }
 
   function backToHome() {
-    if (state === 'sprites' || state === 'settings') toMenu();
+    if (state === 'sprites' || state === 'settings') { cancelConfirm(); toMenu(); }
   }
 
   homeMaps.addEventListener('click', showMaps);
@@ -1364,6 +1440,8 @@
   spriteBack.addEventListener('click', backToHome);
   setBack.addEventListener('click', backToHome);
   setSound.addEventListener('click', toggleSound);
+
+  initWallet();
 
   // ---------- layout: the canvas always fills the whole screen ----------
   let W = 0, H = 0, K = 1, TOP = BAND, BOT = 0, PX = 0, CORR = 0, FLIGHT = 0.4;
@@ -1421,7 +1499,7 @@
     scx = canvas.width / W; scy = canvas.height / H;
     sx = cssW / W; sy = cssH / H;
     const layerKey = scx + '|' + scy + '|' + W + '|' + H + '|' + TOP + '|' + BOT;
-    if (layerKey !== lastLayerKey) { lastLayerKey = layerKey; spriteGen++; spritePool.length = 0; gridPath = null; }   // cached sprites no longer fit
+    if (layerKey !== lastLayerKey) { lastLayerKey = layerKey; spriteGen++; spritePool.length = 0; }   // cached sprites no longer fit
 
     // HUD row and the pause button share one line near the top
     const ins = readInsets();
@@ -1463,14 +1541,8 @@
   // ---------- state ----------
   let state = 'menu';   // menu | maps | sprites | settings | playing | paused | over
   let clock = 0, world = 0;
-  const p = { y: 0, vy: 0, dir: 1, grounded: true, squash: 0, buffer: 0, hist: [], histHead: 0, histCount: 0 };
+  const p = { y: 0, vy: 0, dir: 1, grounded: true, squash: 0, buffer: 0, hist: [] };
   let obstacles = [], orbs = [], parts = [];
-  // Reuse short-lived particle/floaters objects instead of allocating and splicing during gameplay.
-  const particlePool = [];
-  const floaterPool = [];
-  const MAX_PARTICLES = 140;
-  const MAX_FLOATERS = 6;
-  let gridPath = null, gridPathW = 0, gridPathH = 0;
   let run = { t: 0, dist: 0, bonus: 0, speed: 0 };
   let cursor = 0, nextSide = 'floor', sameRun = 0;
   let shake = 0, finalScore = 0, isNewBest = false, overlayReady = false, crashClock = 0;
@@ -1487,16 +1559,16 @@
   function resetRun() {
     spriteHead = 1;
     for (const o of obstacles) releaseSprite(o);
-    obstacles = []; orbs = []; parts.length = 0;
-    particlePool.length = 0;
-    floaters.length = 0;
-    floaterPool.length = 0;
+    for (const o of orbs) if (orbPool.length < ORB_POOL_CAP) orbPool.push(o);
+    for (const q of parts) if (partPool.length < PART_POOL_CAP) partPool.push(q);
+    obstacles = []; orbs = []; parts = [];
     run = { t: 0, dist: 0, bonus: 0, speed: BASE * K, banked: 0 };
     p.dir = 1; p.y = BOT - S; p.vy = 0; p.grounded = true;
-    p.squash = 0; p.buffer = 0; p.hist.length = 0; p.histHead = 0; p.histCount = 0;
+    p.squash = 0; p.buffer = 0; p.hist.length = 0;
     cursor = W + 220 * K; nextSide = 'floor'; sameRun = 0;
     shake = 0; isNewBest = false; overlayReady = false;
     soul = 100; soulFlash = 0; lowWarned = false; deathReason = 'block'; lastMegaT = -999;
+    for (const f of floaters) if (floaterPool.length < FLOATER_POOL_CAP) floaterPool.push(f);
     floaters = [];
     boostMode = 'off'; boostT = 0; boostUses = 0; boostCombo = 0; boostGrace = 0; boostStreamX = 0; speedMul = 1;
     boostReady = BOOST_FIRST_READY <= 0;
@@ -1709,10 +1781,13 @@
   };
 
   // ---------- particles ----------
+  // A burst re-uses spent particle objects instead of creating new ones (the rocket alone spawns an exhaust
+  // spark every single frame it flies, so this is the single biggest source of garbage in a long session).
+  const PART_POOL_CAP = 160;
+  let partPool = [];
   function burst(x, y, n, colors, speed, life, bias) {
-    const count = Math.min(n, Math.max(0, MAX_PARTICLES - parts.length));
-    for (let i = 0; i < count; i++) {
-      const q = particlePool.pop() || {};
+    for (let i = 0; i < n; i++) {
+      const q = partPool.pop() || {};
       q.x = x; q.y = y;
       q.vx = (Math.random() - 0.5) * speed * 2 + (bias || 0);
       q.vy = (Math.random() - 0.5) * speed * 2;
@@ -1723,16 +1798,15 @@
     }
   }
   function updateParticles(dt) {
-    const drag = 1 - Math.min(1, 2.2 * dt);
     for (let i = parts.length - 1; i >= 0; i--) {
       const q = parts[i];
       q.x += q.vx * dt; q.y += q.vy * dt;
-      q.vx *= drag; q.vy *= drag;
+      q.vx *= 1 - Math.min(1, 2.2 * dt);
+      q.vy *= 1 - Math.min(1, 2.2 * dt);
       q.life -= dt;
       if (q.life <= 0) {
-        const last = parts.pop();
-        if (last !== q) parts[i] = last;
-        if (particlePool.length < MAX_PARTICLES) particlePool.push(q);
+        parts.splice(i, 1);
+        if (partPool.length < PART_POOL_CAP) partPool.push(q);
       }
     }
   }
@@ -1741,19 +1815,24 @@
   // A coin's x is its scrolling position plus a left/right sway that grows as the run goes on.
   const coinX = (o) => o.x + (o.amp ? Math.sin(o.age * o.freq + o.phase) * o.amp : 0);
 
+  // Coins are pooled too: every field is set explicitly on reuse so nothing leaks from whatever the
+  // recycled object used to be (a boost coin becoming a stale "boost:true" regular coin, say).
+  const ORB_POOL_CAP = 80;
+  let orbPool = [];
   function spawnCoin(cx) {
     const prog = clamp((run.t - COIN_SWAY_START) / COIN_SWAY_RAMP, 0, 1);
     const mega = run.t > 8 && run.t - lastMegaT > MEGA_COOLDOWN && Math.random() < MEGA_CHANCE;
     if (mega) lastMegaT = run.t;
-    orbs.push({
-      x: cx,
-      y: (TOP + BOT) / 2,
-      mega,
-      amp: prog > 0 ? prog * COIN_SWAY_TIME * baseSpeed() : 0,
-      freq: lerp(2.0, 3.0, prog),
-      phase: rand(0, Math.PI * 2),
-      age: 0
-    });
+    const o = orbPool.pop() || {};
+    o.x = cx;
+    o.y = (TOP + BOT) / 2;
+    o.mega = mega;
+    o.boost = false;
+    o.amp = prog > 0 ? prog * COIN_SWAY_TIME * baseSpeed() : 0;
+    o.freq = lerp(2.0, 3.0, prog);
+    o.phase = rand(0, Math.PI * 2);
+    o.age = 0;
+    orbs.push(o);
   }
 
   function collectCoin(o, ox) {
@@ -1770,24 +1849,22 @@
       soul = 100;
       run.bonus += MEGA_POINTS;
       burst(ox, o.y, 28, [C.sun, C.blush, C.pink], 340, 0.7, 0);
-      addFloater(ox, o.y - 24, 'SOUL FULL', 1.2, true);
+      spawnFloater(ox, o.y - 24, 'SOUL FULL', 1.2, true);
       sfxMega();
     } else {
       soul = Math.min(100, soul + SOUL_COIN_GAIN);
       run.bonus += ORB_POINTS;
       burst(ox, o.y, 12, [C.blush, C.sun, C.pink], 220, 0.5, 0);
-      addFloater(ox, o.y - 24, '+' + SOUL_COIN_GAIN + '%', 0.9, false);
+      spawnFloater(ox, o.y - 24, '+' + SOUL_COIN_GAIN + '%', 0.9, false);
       sfxOrb();
     }
     soulFlash = 0.35;
     if (soul > 35) { lowWarned = false; stopFuelSiren(); }
   }
 
-  function addFloater(x, y, text, life, big) {
-    if (floaters.length >= MAX_FLOATERS) {
-      const f = floaters.shift();
-      floaterPool.push(f);
-    }
+  const FLOATER_POOL_CAP = 16;
+  let floaterPool = [];
+  function spawnFloater(x, y, text, life, big) {
     const f = floaterPool.pop() || {};
     f.x = x; f.y = y; f.text = text; f.life = life; f.max = life; f.big = !!big;
     floaters.push(f);
@@ -1798,9 +1875,8 @@
       f.life -= dt;
       f.y -= 60 * dt;
       if (f.life <= 0) {
-        const last = floaters.pop();
-        if (last !== f) floaters[i] = last;
-        if (floaterPool.length < MAX_FLOATERS) floaterPool.push(f);
+        floaters.splice(i, 1);
+        if (floaterPool.length < FLOATER_POOL_CAP) floaterPool.push(f);
       }
     }
   }
@@ -1812,7 +1888,7 @@
   function tryBoost() {
     if (state !== 'playing') return;
     if (boostMode === 'off' && !boostReady) {
-      addFloater(W / 2, (TOP + BOT) / 2 + 40, 'Boost ready in ' + fmtTime(boostCd), 1.1, false);
+      spawnFloater(W / 2, (TOP + BOT) / 2 + 40, 'Boost ready in ' + fmtTime(boostCd), 1.1, false);
       return;
     }
     activateBoost();
@@ -1837,7 +1913,9 @@
     const spacing = BOOST_COIN_SPACING * K;
     while (boostStreamX < W + 40 && boostT + (boostStreamX - PX) / run.speed < BOOST_DURATION - 0.15) {
       const wx = world + (boostStreamX - PX);
-      orbs.push({ x: boostStreamX, y: boostPathY(wx), mega: false, boost: true, amp: 0, freq: 0, phase: 0, age: 0 });
+      const o = orbPool.pop() || {};
+      o.x = boostStreamX; o.y = boostPathY(wx); o.mega = false; o.boost = true; o.amp = 0; o.freq = 0; o.phase = 0; o.age = 0;
+      orbs.push(o);
       boostStreamX += spacing;
     }
   }
@@ -1851,10 +1929,7 @@
     if (!reduce) burst(PX + S / 2 - 32, p.y + S / 2, 1, [C.sun, C.pink], 50, 0.3, -run.speed * 0.5);   // exhaust sparks
     if (boostT >= BOOST_DURATION) {
       // keep flying until there is a clear stretch ahead, then come down safely
-      let ahead = null;
-      for (let i = 0; i < obstacles.length; i++) {
-        if (obstacles[i].x + obstacles[i].w > PX - 2) { ahead = obstacles[i]; break; }
-      }
+      const ahead = obstacles.find((o) => o.x + o.w > PX - 2);
       // judged at normal speed, because that's the pace you come back down to
       const clear = !ahead || (ahead.x - (PX + S)) / Math.max(baseSpeed() * 1.15, 1) >= 0.45;
       if (clear || boostT >= BOOST_DURATION + 2.5) beginLanding(ahead);
@@ -1875,7 +1950,7 @@
       if (boostCd <= 0) {
         boostCd = 0;
         boostReady = true;
-        addFloater(W / 2, (TOP + BOT) / 2 - 80, 'BOOST READY', 1.4, true);
+        spawnFloater(W / 2, (TOP + BOT) / 2 - 80, 'BOOST READY', 1.4, true);
         sfxBoostReady();
       }
     }
@@ -2005,13 +2080,17 @@
     for (const o of obstacles) o.x -= dx;
     for (const o of orbs) { o.x -= dx; o.age += dt; }
     while (obstacles.length && obstacles[0].x + obstacles[0].w <= -30) releaseSprite(obstacles.shift());   // in place: no new array each frame
-    for (let i = orbs.length - 1; i >= 0; i--) if (orbs[i].x <= -30 - orbs[i].amp) orbs.splice(i, 1);
+    for (let i = orbs.length - 1; i >= 0; i--) {
+      if (orbs[i].x <= -30 - orbs[i].amp) {
+        const dead = orbs.splice(i, 1)[0];
+        if (orbPool.length < ORB_POOL_CAP) orbPool.push(dead);
+      }
+    }
     spawnObstacles();
     if (boostMode === 'rocket') spawnBoostCoins();
 
-    p.hist[p.histHead] = p.y;
-    p.histHead = (p.histHead + 1) & 7;
-    if (p.histCount < 8) p.histCount++;
+    p.hist.unshift(p.y);
+    if (p.hist.length > 8) p.hist.pop();
 
     // coins
     const cx0 = PX, cx1 = PX + S, cy0 = p.y, cy1 = p.y + S;
@@ -2022,6 +2101,7 @@
       if ((ox - nx) ** 2 + (o.y - ny) ** 2 < r * r) {
         orbs.splice(i, 1);
         collectCoin(o, ox);
+        if (orbPool.length < ORB_POOL_CAP) orbPool.push(o);
       }
     }
 
@@ -2071,6 +2151,26 @@
   }
 
   // ---------- drawing ----------
+  // Cached font strings and the SOUL label's measured width: real work only when the screen scale changes.
+  let fontCacheGen = -1;
+  let fontHudLab = '', fontHudNum = '', fontSoulLab = '', fontSoulNum = '', fontHint = '', fontFloatBig = '', fontFloatSmall = '', soulLabelW = 0;
+  function refreshFontCache() {
+    if (fontCacheGen === spriteGen) return;
+    fontCacheGen = spriteGen;
+    const u = 1 / sy;
+    fontHudLab = '600 ' + Math.round(17 * u) + 'px ' + FONT;
+    fontHudNum = '800 ' + Math.round(20 * u) + 'px ' + FONT;
+    fontSoulLab = '800 ' + Math.round(12 * u) + 'px ' + FONT;
+    fontSoulNum = '800 ' + Math.round(24 * u) + 'px ' + FONT;
+    fontHint = '600 ' + Math.round(18 / sy) + 'px ' + FONT;
+    fontFloatBig = '800 ' + Math.round(22 / sy) + 'px ' + FONT;
+    fontFloatSmall = '800 ' + Math.round(18 / sy) + 'px ' + FONT;
+    ctx.font = fontSoulLab;
+    soulLabelW = ctx.measureText('SOUL').width;
+  }
+  // setLineDash() copies whatever array it is given, so one shared array can be reused every frame
+  // instead of allocating a fresh [26, 18] / [9, 9] / [] literal each time these run.
+  const DASH_WALL = [26, 18], DASH_MEGA = [9, 9], DASH_NONE = [];
   function rr(x, y, w, h, r) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);
@@ -2093,26 +2193,12 @@
     if (lite) return;
     ctx.fillStyle = 'rgba(255,255,255,0.12)';
     const gs = 44;
-    if (!gridPath || gridPathW !== W || gridPathH !== H) {
-      gridPath = new Path2D();
-      gridPathW = W; gridPathH = H;
-      let row = 0;
-      for (let y = TOP + gs / 2; y < BOT; y += gs, row++) {
-        const shift = (row % 2) * gs / 2;
-        for (let x = -gs; x < W + gs; x += gs) {
-          const cx = x + shift, cy = y, r = 2.6;
-          gridPath.moveTo(cx + r, cy);
-          gridPath.arc(cx, cy, r, 0, Math.PI * 2);
-        }
-      }
-    }
     const off = (world * 0.3) % gs;
-    ctx.save();
-    ctx.translate(-off, 0);
-    ctx.fill(gridPath);
-    ctx.translate(gs, 0);
-    ctx.fill(gridPath);
-    ctx.restore();
+    let row = 0;
+    for (let y = TOP + gs / 2; y < BOT; y += gs, row++) {
+      const shift = (row % 2) * gs / 2;
+      for (let x = -off - shift; x < W + gs; x += gs) circle(x, y, 2.6);
+    }
   }
 
   function drawObstacles() {
@@ -2151,10 +2237,10 @@
         circle(ox, o.y, 36 * pulse);
         ctx.strokeStyle = C.blush;
         ctx.lineWidth = 3;
-        ctx.setLineDash([9, 9]);
+        ctx.setLineDash(DASH_MEGA);
         ctx.lineDashOffset = -(clock * 40) % 18;
         ctx.beginPath(); ctx.arc(ox, o.y, 28 * pulse, 0, Math.PI * 2); ctx.stroke();
-        ctx.setLineDash([]);
+        ctx.setLineDash(DASH_NONE);
         ctx.fillStyle = C.sun;
         circle(ox, o.y, 17);
         ctx.fillStyle = C.blush;
@@ -2176,22 +2262,31 @@
     ctx.fillRect(-30, BOT, W + 60, H - BOT + 30);
     ctx.strokeStyle = 'rgba(255,227,236,0.35)';
     ctx.lineWidth = 3;
-    ctx.setLineDash([26, 18]);
+    ctx.setLineDash(DASH_WALL);
     ctx.lineDashOffset = world % 44;
     ctx.beginPath(); ctx.moveTo(0, TOP - 8); ctx.lineTo(W, TOP - 8); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0, BOT + 8); ctx.lineTo(W, BOT + 8); ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.setLineDash(DASH_NONE);
   }
 
+  const trailColorCache = new Map();
+  function trailColor(trail, n, k) {
+    const key = trail + '|' + n + '|' + k;
+    let s = trailColorCache.get(key);
+    if (s === undefined) {
+      const a = 0.24 * (1 - k / (n + 1));
+      s = 'rgba(' + trail + ',' + a.toFixed(3) + ')';
+      trailColorCache.set(key, s);
+    }
+    return s;
+  }
   function drawTrail() {
     if (reduce || lite || state !== 'playing' || boostMode === 'rocket') return;
-    const n = p.histCount;
+    const n = p.hist.length;
     for (let k = 1; k < n; k++) {
-      const a = 0.24 * (1 - k / (n + 1));
       const s = S * (1 - k * 0.05);
-      const idx = (p.histHead - 1 - k + 8) & 7;
-      ctx.fillStyle = 'rgba(' + SP.trail + ',' + a.toFixed(3) + ')';
-      ctx.fillRect(PX + (S - s) / 2 - k * run.speed * 0.016, p.hist[idx] + (S - s) / 2, s, s);
+      ctx.fillStyle = trailColor(SP.trail, n, k);
+      ctx.fillRect(PX + (S - s) / 2 - k * run.speed * 0.016, p.hist[k] + (S - s) / 2, s, s);
     }
   }
 
@@ -2293,11 +2388,11 @@
 
     // Best score stays in the top-left, with the integer directly below "Best".
     ctx.fillStyle = 'rgba(255,227,236,0.72)';
-    ctx.font = '600 ' + Math.round(17 * u) + 'px ' + FONT;
+    ctx.font = fontHudLab;
     ctx.fillText('Best', hudL, hudY);
 
     ctx.fillStyle = C.blush;
-    ctx.font = '800 ' + Math.round(20 * u) + 'px ' + FONT;
+    ctx.font = fontHudNum;
     ctx.fillText(String(best), hudL, hudY + 22 * u);
   }
 
@@ -2306,15 +2401,9 @@
     if (inMenus()) return;
     const ux = 1 / sx, uy = 1 / sy;
     const hCss = 14;
-    ctx.font = '800 ' + Math.round(12 * uy) + 'px ' + FONT;
+    ctx.font = fontSoulLab;
     const label = 'SOUL';
-    const soulFont = '800 ' + Math.round(12 * uy) + 'px ' + FONT;
-    if (soulLabelFontCache !== soulFont) {
-      ctx.font = soulFont;
-      soulLabelWCache = ctx.measureText(label).width;
-      soulLabelFontCache = soulFont;
-    }
-    const labelW = soulLabelWCache;
+    const labelW = soulLabelW;
     const gap = 10 * ux;
     const left = hudL;
     const right = W - hudR;
@@ -2368,7 +2457,7 @@
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = C.blush;
-    ctx.font = '800 ' + Math.round(24 * uy) + 'px ' + FONT;
+    ctx.font = fontSoulNum;
     const txt = String(state === 'over' ? finalScore : score());
     ctx.fillText(txt, W / 2, cy + 28 * uy);
   }
@@ -2380,7 +2469,7 @@
     for (const f of floaters) {
       ctx.globalAlpha = clamp(f.life / f.max * 1.6, 0, 1);
       ctx.fillStyle = f.big ? C.sun : C.blush;
-      ctx.font = '800 ' + Math.round((f.big ? 22 : 18) / sy) + 'px ' + FONT;
+      ctx.font = f.big ? fontFloatBig : fontFloatSmall;
       ctx.fillText(f.text, f.x, f.y);
     }
     ctx.globalAlpha = 1;
@@ -2391,7 +2480,7 @@
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = C.blush;
-    ctx.font = '600 ' + Math.round(18 / sy) + 'px ' + FONT;
+    ctx.font = fontHint;
     if (run.t < 2.8) {
       ctx.globalAlpha = run.t < 2.2 ? 1 : 1 - (run.t - 2.2) / 0.6;
       ctx.fillText('Tap to flip', W / 2, (TOP + BOT) / 2 - 30);
@@ -2405,6 +2494,7 @@
   }
 
   function render() {
+    refreshFontCache();
     ctx.setTransform(scx, 0, 0, scy, 0, 0);
     ctx.fillStyle = C.ink;
     ctx.fillRect(0, 0, W, H);
@@ -2426,27 +2516,29 @@
   }
 
   // ---------- ui ----------
-  let boostUiCache = '', soulLabelWCache = -1, soulLabelFontCache = '';
+  let boostUiCls = '', boostUiPct = -1, boostUiSec = -2;
   function fmtTime(sec) {
     const t = Math.max(0, Math.ceil(sec));
     return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
   }
   function updateBoostUi() {
     if (boostBtn.hidden) return;
-    let cls, lbl, pct, aria;
+    let cls, pct;
     if (boostMode !== 'off') {
-      cls = 'active'; lbl = 'GO!'; aria = 'Boost active';
+      cls = 'active';
       pct = boostMode === 'rocket' ? clamp(1 - boostT / BOOST_DURATION, 0, 1) : 0;
     } else if (boostReady) {
-      cls = 'ready'; lbl = 'BOOST'; pct = 1; aria = 'Boost, ready';
+      cls = 'ready'; pct = 1;
     } else {
-      cls = 'cool'; lbl = fmtTime(boostCd);
+      cls = 'cool';
       pct = boostCdTotal > 0 ? clamp(1 - boostCd / boostCdTotal, 0, 1) : 1;
-      aria = 'Boost, ready in ' + lbl;
     }
-    const key = cls + '|' + lbl + '|' + Math.round(pct * 200);
-    if (key === boostUiCache) return;
-    boostUiCache = key;
+    const pctKey = Math.round(pct * 200);
+    const sec = cls === 'cool' ? Math.max(0, Math.ceil(boostCd)) : -1;   // fmtTime()'s own rounding, mirrored here so this catches every change it would
+    if (cls === boostUiCls && pctKey === boostUiPct && sec === boostUiSec) return;   // nothing a player could see has changed - build nothing
+    boostUiCls = cls; boostUiPct = pctKey; boostUiSec = sec;
+    const lbl = cls === 'active' ? 'GO!' : cls === 'ready' ? 'BOOST' : fmtTime(boostCd);
+    const aria = cls === 'cool' ? 'Boost, ready in ' + lbl : cls === 'ready' ? 'Boost, ready' : 'Boost active';
     boostBtn.className = 'boostbtn ' + cls;
     boostLbl.textContent = lbl;
     boostRing.style.strokeDashoffset = (289 * (1 - pct)).toFixed(1);
@@ -2481,8 +2573,8 @@
       stopFuelSiren();
     if (deathReason === 'soul') { ovText.hidden = false; ovText.textContent = 'Grab coins to keep your soul burning.'; }
       else { ovText.hidden = true; }
-      const fresh = takeNewUnlocks();
-      if (fresh.length) { ovText.textContent = (deathReason === 'soul' ? ovText.textContent + ' ' : '') + unlockText(fresh); ovText.hidden = false; }
+      const fresh = takeNewAffordable();
+      if (fresh.length) { ovText.textContent = (deathReason === 'soul' ? ovText.textContent + ' ' : '') + affordText(fresh); ovText.hidden = false; }
       ovMaps.hidden = false;
       ovStats.hidden = false;
       ovStats.innerHTML = '<div class="score">' + finalScore + '</div><div class="sub">' + (isNewBest ? 'New best' : 'Best ' + best) + '</div>';
@@ -2664,7 +2756,7 @@
     render();
     updateBoostUi();
 
-    if (typeof ytgame !== 'undefined' && (!ytReadyNotified || (!ytGameReadyNotified && state !== 'paused' && !splashActive))) {
+    if (typeof ytgame !== 'undefined') {
       try {
         if (!ytReadyNotified) {
           ytgame.game.firstFrameReady();
