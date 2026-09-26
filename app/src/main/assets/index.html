@@ -114,6 +114,13 @@
     .boostbtn .ico { width: 52%; height: 52%; }
   }
 
+  @media (max-width: 600px) {
+  .boostbtn {
+    transform: translateY(8px);
+  }
+}
+
+
   .overlay {
     position: absolute;
     inset: 0;
@@ -264,9 +271,27 @@
   .mapbar i { display: block; height: 100%; background: var(--sun); }
   .mapprog { font-size: 12px; font-weight: 700; opacity: 0.9; }
   .mapmsg { min-height: 1.3em; margin: 0; font-size: 14px; font-weight: 600; text-align: center; }
+  /* A long list of maps: the title, points and buttons stay put and only the maps scroll. This is the mirror of
+     the short-screen breakpoint just below, which keeps its side-by-side row of cards exactly as it was. */
+  @media (min-height: 521px) {
+    #mapOverlay .mapwrap, #spriteOverlay .mapwrap { max-height: 100%; }
+    #mapOverlay .mapwrap > :not(.maplist), #spriteOverlay .mapwrap > :not(.spritelist) { flex-shrink: 0; }
+    #mapOverlay .maplist, #spriteOverlay .spritelist {
+      flex: 0 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      overflow-anchor: none;
+      touch-action: pan-y;
+      /* room for the cards' offset shadows and focus rings, which the scroll box would otherwise clip */
+      padding: 6px 8px 10px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 227, 236, 0.45) transparent;
+    }
+  }
   @media (max-height: 520px) {
     .mapwrap { width: min(860px, 100%); gap: 8px; }
-    .maplist { flex-direction: row; }
+    .maplist { display: grid; grid-template-columns: repeat(auto-fit, minmax(116px, 1fr)); }   /* one row while it fits, then wraps, so cards never squeeze */
     .mapcard { flex: 1; flex-direction: column; align-items: stretch; min-width: 0; text-align: center; padding: 8px; }
     .mapthumb { width: 100%; height: auto; aspect-ratio: 116 / 68; }
     .maphead { justify-content: center; }
@@ -274,27 +299,125 @@
   }
 
   /* ---- home menu ---- */
-  .homemenu { display: flex; gap: 10px; justify-content: center; width: min(420px, 100%); margin-top: 6px; }
+  /* The main menu shares #overlay with the game-over and pause screens, so anything that reuses a shared class
+     (.title, .stats, .actions, .btn) is only restyled under .overlay.home, which showOverlay() sets for the menu alone. */
+  .overlay.home {
+    gap: 18px;
+    background:
+      radial-gradient(ellipse 90% 58% at 50% 42%, rgba(255, 255, 255, 0.08), transparent 70%),
+      radial-gradient(ellipse at 50% 50%, transparent 52%, rgba(0, 0, 0, 0.3) 100%),
+      var(--scrim, rgba(20, 26, 122, 0.62));
+  }
+  .overlay.home .title { filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.25)); }
+
+  /* best score: a small badge under the title */
+  .overlay.home .stats .sub {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 15px 6px 11px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: var(--blush);
+    background: rgba(0, 0, 0, 0.24);
+    border: 2px solid rgba(255, 210, 63, 0.5);
+    border-radius: 999px;
+  }
+  .overlay.home .stats .sub::before {
+    content: '';
+    flex: none;
+    width: 1.15em;
+    height: 1.15em;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23FFD23F' d='M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  /* play: the hero button, full width of the tile row */
+  .overlay.home .actions { width: min(420px, 100%); margin-top: 2px; }
+  .overlay.home #ovBtn {
+    position: relative;
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 15px 28px;
+    font-size: 26px;
+    letter-spacing: 0.02em;
+    color: var(--deep);
+    background: linear-gradient(180deg, #FFE680 0%, var(--sun) 50%, #FFC21F 100%);
+    border: 0;
+    border-radius: 20px;
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.7), inset 0 -4px 0 rgba(170, 100, 0, 0.25), 0 6px 0 #B47A00, 0 14px 22px rgba(0, 0, 0, 0.32);
+    transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.15s ease;
+  }
+  .overlay.home #ovBtn::before {
+    content: '';
+    flex: none;
+    width: 0.7em;
+    height: 0.7em;
+    background: currentColor;
+    clip-path: polygon(12% 2%, 98% 50%, 12% 98%);
+  }
+  /* a soft glow that breathes around the button (opacity only, so it stays cheap) */
+  .overlay.home #ovBtn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 26px 6px rgba(255, 210, 63, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    animation: homeglow 2.4s ease-in-out infinite;
+    will-change: opacity;
+  }
+  @keyframes homeglow {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) { .overlay.home #ovBtn::after { animation: none; } }
+
+  .homemenu { display: flex; gap: 12px; justify-content: center; width: min(420px, 100%); margin-top: 6px; }
   .tile {
+    --accent: var(--blush);
+    --accent-soft: rgba(255, 227, 236, 0.16);
     flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    padding: 10px 6px;
+    gap: 8px;
+    padding: 12px 6px 11px;
     font: inherit;
     font-weight: 800;
     font-size: 15px;
+    letter-spacing: 0.02em;
     color: var(--blush);
-    background: rgba(255, 227, 236, 0.10);
-    border: 2px solid rgba(255, 227, 236, 0.4);
-    border-radius: 14px;
-    box-shadow: 4px 4px 0 var(--deep);
+    background: linear-gradient(180deg, rgba(255, 227, 236, 0.17), rgba(255, 227, 236, 0.07));
+    border: 2px solid rgba(255, 227, 236, 0.3);
+    border-radius: 18px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 0 var(--deep);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s ease, border-color 0.15s ease;
   }
-  .tile svg { width: 28px; height: 28px; }
-  .tile:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--deep); }
+  #homeMaps { --accent: var(--pink); --accent-soft: rgba(255, 92, 147, 0.2); }
+  #homeSprites { --accent: var(--sun); --accent-soft: rgba(255, 210, 63, 0.2); }
+  /* the icon sits in a tinted badge; content-box keeps the glyph at its own size, so the badge grows around it */
+  .tile svg {
+    box-sizing: content-box;
+    width: 28px;
+    height: 28px;
+    padding: 7px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 2px solid var(--accent);
+    border-radius: 14px;
+  }
+  @media (hover: hover) {
+    .overlay.home #ovBtn:hover { transform: translateY(-2px); filter: brightness(1.06); }
+    .tile:hover { transform: translateY(-2px); background: linear-gradient(180deg, rgba(255, 227, 236, 0.25), rgba(255, 227, 236, 0.11)); border-color: rgba(255, 227, 236, 0.5); }
+  }
+  .overlay.home #ovBtn:active { transform: translateY(5px); filter: none; box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.7), inset 0 -4px 0 rgba(170, 100, 0, 0.25), 0 1px 0 #B47A00, 0 4px 8px rgba(0, 0, 0, 0.3); }
+  .tile:active { transform: translateY(3px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 0 var(--deep); }
   .tile:focus-visible { outline: 3px solid var(--blush); outline-offset: 3px; }
 
   /* ---- sprites ---- */
@@ -363,6 +486,7 @@
   }
   .switch.on { color: var(--deep); background: var(--sun); border-color: var(--sun); }
   .switch:focus-visible { outline: 3px solid var(--blush); outline-offset: 3px; }
+  .switch:disabled { opacity: 0.45; cursor: default; }
 
   @media (max-height: 520px) {
     .homemenu { margin-top: 2px; gap: 8px; }
@@ -408,7 +532,7 @@
   <canvas id="game" role="img" aria-label="Flipside game. Tap to flip gravity and dodge the obstacles."></canvas>
   <div class="overlay" id="overlay">
     <h1 class="title" id="ovTitle" aria-label="Flipside">Flip<span class="flipped">side</span></h1>
-    <p class="lede" id="ovText">Flip gravity to dodge the obstacles.<br>Tap, click or press Space.</p>
+    <p class="lede" id="ovText" hidden></p>
     <div class="stats" id="ovStats" hidden></div>
     <div class="actions">
       <button class="btn" id="ovBtn" type="button">Play</button>
@@ -467,6 +591,13 @@
           </div>
           <button class="switch on" id="setSound" type="button" role="switch" aria-checked="true" aria-labelledby="setSoundName"><span id="setSoundLbl">On</span></button>
         </div>
+        <div class="setrow">
+          <div class="setinfo">
+            <span class="setname" id="setMusicName">Music</span>
+            <span class="setdesc" id="setMusicDesc">Turn off to keep sound effects only</span>
+          </div>
+          <button class="switch on" id="setMusic" type="button" role="switch" aria-checked="true" aria-labelledby="setMusicName"><span id="setMusicLbl">On</span></button>
+        </div>
       </div>
       <div class="actions">
         <button class="btn alt" id="setBack" type="button">Back</button>
@@ -516,6 +647,7 @@
   const spriteOverlay = $('spriteOverlay'), spriteList = $('spriteList'), spriteTotal = $('spriteTotal');
   const spriteMsg = $('spriteMsg'), spriteBack = $('spriteBack');
   const settingsOverlay = $('settingsOverlay'), setSound = $('setSound'), setSoundLbl = $('setSoundLbl'), setSoundDesc = $('setSoundDesc'), setBack = $('setBack');
+  const setMusic = $('setMusic'), setMusicLbl = $('setMusicLbl'), setMusicDesc = $('setMusicDesc');
 
   const C = { ink: '#2431D6', deep: '#141A7A', pink: '#FF5C93', blush: '#FFE3EC', sun: '#FFD23F' };
   const FONT = '"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
@@ -564,6 +696,7 @@
   };
   let best = parseInt(store.get('flipside-best') || '0', 10) || 0;
   let soundOn = store.get('flipside-sound') !== 'off';
+  let musicOn = store.get('flipside-music') !== 'off';   // music only; sound effects follow soundOn alone
 
   // ---------- YouTube Playables integration ----------
   // YouTube provides the ad experience. Outside YouTube, these calls are no-ops.
@@ -630,8 +763,15 @@
   // ---------- maps ----------
   // Prices, in points. Points come from your runs and are SPENT when you buy something.
   // The original map is free and always yours.
-  const FOREST_PRICE = 5000;
-  const ROCKY_PRICE = 6000;
+  const FOREST_PRICE = 10000;
+  const ROCKY_PRICE = 20000;
+  const CITY_PRICE = 35000;
+  const DAWN_PRICE = 60000;
+  const LAVA_PRICE = 85000;
+  const GLACIER_PRICE = 100000;
+  const TESLA_PRICE = 120000;
+  const OCEAN_PRICE = 130000;
+  const LIGHTHOUSE_PRICE = 150000;
 
   // Mix two #rrggbb colours; t is the share of a.
   const mixHex = (a, b, t) => {
@@ -667,6 +807,79 @@
       theme: {
         ink: '#553F8E', deep: '#2A1D52', hill: 'rgba(28,16,64,0.34)', pshadow: 'rgba(24,14,54,0.7)', scrim: 'rgba(38,24,78,0.62)',
         rock: '#A89A8E', rockShade: '#77695F', rockLight: '#D8CCBF', crack: '#4A3F39'
+      }
+    },
+    {
+      id: 'city', name: 'N-City', price: CITY_PRICE, style: 'city',
+      blurb: 'Skyscrapers under city lights.',
+      theme: {
+        ink: '#12143A', deep: '#08091C', hill: 'rgba(40,110,150,0.26)', pshadow: 'rgba(8,9,25,0.74)', scrim: 'rgba(11,12,32,0.64)',
+        skyFar: 'rgba(35,32,90,0.85)', winFar: 'rgba(255,201,102,0.55)',
+        body: '#333A66', bodyShade: '#20244A', bodyLight: '#4E5890',
+        windowLit: '#FFC966', windowCool: '#9FE8FF', antenna: '#C9CFE6', antennaLight: '#FF5C5C'
+      }
+    },
+    {
+      id: 'dawn', name: 'The 7AM', price: DAWN_PRICE, style: 'dawn',
+      blurb: 'Steam pipes at first light.',
+      theme: {
+        ink: '#5B4A52', deep: '#2E2229', hill: 'rgba(255,158,102,0.24)', pshadow: 'rgba(15,10,13,0.72)', scrim: 'rgba(24,17,22,0.64)',
+        pipe: '#B5714A', pipeShade: '#7A4A2E', pipeLight: '#D99B6E',
+        flange: '#4A4640', rivet: '#D8D2C4', steam: '#FFF7EB'
+      }
+    },
+    {
+      id: 'lava', name: 'Magma', price: LAVA_PRICE, style: 'lava',
+      blurb: 'Molten blocks under ash skies.',
+      theme: {
+        ink: '#2A1310', deep: '#120807', hill: 'rgba(255,96,32,0.15)', pshadow: 'rgba(10,4,3,0.75)', scrim: 'rgba(24,9,7,0.66)',
+        crust: '#7A4030', crustShade: '#4A2119', crustLight: '#A65A40',
+        lava: '#FF6A1F', lavaHot: '#FFC83D',
+        mountFar: 'rgba(16,7,6,0.72)', craterGlow: 'rgba(255,128,48,0.85)', ember: '#FF9A4D'
+      }
+    },
+    {
+      id: 'glacier', name: 'Glaciers', price: GLACIER_PRICE, style: 'ice',
+      blurb: 'Ice spires in drifting snow.',
+      theme: {
+        ink: '#4F7EAC', deep: '#16304F', hill: 'rgba(255,255,255,0.16)', pshadow: 'rgba(12,30,54,0.62)', scrim: 'rgba(16,38,66,0.66)',
+        ice: '#D9F1FF', iceShade: '#8FCBEE', iceLight: '#FFFFFF', iceEdge: '#1F4E7C',
+        snow: '#FFFFFF', peakLight: 'rgba(255,255,255,0.26)', peakShade: 'rgba(214,234,250,0.13)'
+      }
+    },
+    {
+      id: 'tesla', name: 'Tesla', price: TESLA_PRICE, style: 'coil',
+      blurb: 'Crackling coils and lightning.',
+      theme: {
+        ink: '#0A0E2C', deep: '#04061A', hill: 'rgba(100,120,255,0.19)', pshadow: 'rgba(2,3,14,0.78)', scrim: 'rgba(6,8,32,0.68)',
+        coilBody: '#4D5AA8', coilLight: '#A9B6F2', coilShade: '#1D2558', coilMetal: '#3A4690',
+        chrome: '#E4EAFF', chromeShade: '#8B96CF', copper: '#E8A04A',
+        arc: '#7DF9FF', arcCore: '#F2FDFF', violet: '#B48CFF'
+      }
+    },
+    {
+      id: 'ocean', name: 'Ocean', price: OCEAN_PRICE, style: 'ocean',
+      blurb: 'Kelp forests and coral in the deep blue.',
+      theme: {
+        ink: '#0B4A6B', deep: '#052537', hill: 'rgba(8,58,80,0.34)', pshadow: 'rgba(4,26,38,0.7)', scrim: 'rgba(7,46,64,0.62)',
+        weed: '#2FA27A', weedShade: '#1B6B52', weedLight: '#8CE9C0', stem: '#1F5B46',
+        coralPalette: [
+          { base: '#FF6F91', shade: '#C94A6C', light: '#FFC2D4' },
+          { base: '#FF9F45', shade: '#D97328', light: '#FFD9A8' },
+          { base: '#9B87FF', shade: '#6B57D6', light: '#D6CCFF' },
+          { base: '#4FD3C4', shade: '#2B9C8F', light: '#B4F3EA' }
+        ],
+        polyp: '#FFF6DE', bubble: 'rgba(216,248,255,0.9)', ray: 'rgba(190,240,255,0.09)', sandFar: 'rgba(18,80,96,0.3)'
+      }
+    },
+    {
+      id: 'lighthouse', name: 'LitHom', price: LIGHTHOUSE_PRICE, style: 'lighthouse',
+      blurb: 'Beacons sweeping a moonlit coast.',
+      theme: {
+        ink: '#0A1B33', deep: '#040B18', hill: 'rgba(110,145,195,0.14)', pshadow: 'rgba(4,10,20,0.72)', scrim: 'rgba(10,27,51,0.62)',
+        tower: '#E8E1CE', towerShade: '#9C9480', towerLight: '#FFFBF0', band: '#262A34',
+        rail: '#3A3F4A', glass: '#FFD27A', glassCore: '#FFF3C4', roof: '#3E4756', roofShade: '#242A33',
+        beam: '#FFE9A8', beamCore: '#FFF7DD', star: '#EAF2FF', mist: '#B9C9DE', islandFar: 'rgba(6,14,26,0.6)'
       }
     }
   ];
@@ -879,9 +1092,417 @@
     return { kind: 'rock', outline: Lp.concat(Rp.slice().reverse()), dark, light, cracks, extent };
   }
 
+  function lookTower(w, h, rng) {
+    const R = (a, b) => a + rng() * (b - a);
+    const cx = w / 2;
+    const antennaH = clamp(h * R(0.05, 0.11), 5, 26);
+    const bodyH = h - antennaH;
+    const nSteps = rng() < 0.5 ? 1 : (rng() < 0.7 ? 0 : 2);   // most towers step in once near the top; some are a flat slab; a few step twice
+    const tiers = [];
+    let hw = cx * R(0.86, 1.0), a = 0;
+    for (let k = 0; k <= nSteps; k++) {
+      const isLast = k === nSteps;
+      const b = isLast ? bodyH : Math.min(bodyH, a + bodyH * R(0.3, 0.46));
+      tiers.push({ a, b, hw });
+      hw *= R(0.62, 0.8);
+      a = b;
+      if (a >= bodyH) break;
+    }
+    const antennaHW = clamp(w * 0.018, 1, 2.2);
+    const extent = (t) => {
+      if (t > bodyH) return [cx - antennaHW, cx + antennaHW];
+      for (const q of tiers) if (t >= q.a && t <= q.b) return [cx - q.hw, cx + q.hw];
+      const last = tiers[tiers.length - 1];
+      return [cx - last.hw, cx + last.hw];
+    };
+    // Lit windows: a small grid per tier, decided once here (like the rock's cracks) so painting is just fillRects.
+    const windows = [];
+    for (const q of tiers) {
+      const segH = q.b - q.a;
+      if (segH < 14 || q.hw < 8) continue;
+      const cols = clamp(Math.floor((q.hw * 2 - 6) / 10), 1, 6);
+      const rows = clamp(Math.floor((segH - 6) / 12), 1, 12);
+      const cw = (q.hw * 2 - 6) / cols, rh = (segH - 6) / rows;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (rng() < 0.24) continue;                 // some windows are dark
+          windows.push({
+            x: cx - q.hw + 3 + c * cw + cw * 0.18, y: q.a + 3 + r * rh + rh * 0.18,
+            w: cw * 0.64, h: rh * 0.64, warm: rng() < 0.78
+          });
+        }
+      }
+    }
+    return { kind: 'tower', cx, bodyH, tiers, antennaH, antennaHW, windows, extent };
+  }
+
+  function lookPipe(w, h, rng) {
+    const R = (a, b) => a + rng() * (b - a);
+    const cx = w / 2;
+    const pipeHW = clamp(w * R(0.26, 0.36), 7, cx * 0.92);      // the pipe itself stays a near-uniform width (unlike a tapering tree)
+    const flangeHW = clamp(pipeHW * R(1.3, 1.55), pipeHW + 2, cx * 0.94);
+    const flangeH = clamp(h * 0.032, 4, 9);
+    const capH = clamp(h * R(0.06, 0.1), 6, 20);                // a short nozzle cap narrows the very tip, so it can still be skimmed closely
+    const capHW = pipeHW * R(0.5, 0.68);
+    const bodyH = h - capH;
+    const nJoints = clamp(Math.round(bodyH / R(65, 90)), 1, 5);
+    const joints = [];
+    for (let k = 1; k <= nJoints; k++) joints.push(clamp((k / (nJoints + 1)) * bodyH + R(-8, 8), flangeH, bodyH - flangeH));
+    const extent = (t) => {
+      if (t > bodyH) {
+        const f = clamp((t - bodyH) / capH, 0, 1);
+        const hw = lerp(pipeHW, capHW, f);
+        return [cx - hw, cx + hw];
+      }
+      for (const jy of joints) if (t >= jy - flangeH / 2 && t <= jy + flangeH / 2) return [cx - flangeHW, cx + flangeHW];
+      return [cx - pipeHW, cx + pipeHW];
+    };
+    const valveAt = joints.length && rng() < 0.55 ? joints[Math.floor(rng() * joints.length)] : null;
+    return { kind: 'pipe', cx, pipeHW, flangeHW, flangeH, joints, bodyH, capH, capHW, valveAt, extent };
+  }
+
+  // Magma: a stack of chunky lava blocks, each one skewed a little and nudged sideways, so no two obstacles match.
+  // Every block is a convex quad and the silhouette is their union, so the painting and the collision test agree.
+  function polyExtent(pts, t) {
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      if ((a[1] <= t && t <= b[1]) || (b[1] <= t && t <= a[1])) {
+        const dt = b[1] - a[1];
+        if (dt === 0) { lo = Math.min(lo, a[0], b[0]); hi = Math.max(hi, a[0], b[0]); continue; }
+        const u = a[0] + (b[0] - a[0]) * ((t - a[1]) / dt);
+        if (u < lo) lo = u;
+        if (u > hi) hi = u;
+      }
+    }
+    return lo <= hi ? [lo, hi] : null;
+  }
+
+  function lookLava(w, h, rng) {
+    const R = (a, b) => a + rng() * (b - a);
+    const cx = w / 2;
+    const n = clamp(Math.round(h / 72), 2, 6);
+    const cuts = [0];
+    for (let k = 1; k < n; k++) cuts.push(((k + R(-0.3, 0.3)) / n) * h);
+    cuts.push(h);
+    const slabs = [];
+    for (let k = 0; k < n; k++) {
+      const last = k === n - 1;
+      const a = cuts[k];
+      const b = last ? h : cuts[k + 1] + R(8, 16);               // reaches a little into the next block, so the stack has no gaps
+      const f = n > 1 ? k / (n - 1) : 0;
+      const hwB = Math.max(6, cx * R(0.78, 1.0) * (1 - 0.3 * f));  // blocks get a bit narrower towards the tip
+      const hwT = hwB * R(0.8, 1.0);
+      const c = clamp(cx + R(-0.16, 0.16) * w, hwB, w - hwB);
+      const drop = last ? R(6, Math.min(30, (b - a) * 0.35)) : R(0, 9);   // one top corner sits lower, so the top is slanted
+      const lean = rng() < 0.5;
+      const dL = lean ? drop : 0, dR = lean ? 0 : drop;
+      const pts = [[c - hwB, a], [c + hwB, a], [c + hwT, b - dR], [c - hwT, b - dL]];
+      // glowing cracks, decided once here so painting is only lines
+      const cracks = [];
+      if (b - a >= 30) {
+        const nc = rng() < 0.5 ? 1 : 2;
+        for (let i = 0; i < nc; i++) {
+          let u = c + R(-0.5, 0.5) * hwT, t = b - drop - R(3, Math.min(16, (b - a) * 0.3));
+          const line = [[u, t]];
+          for (let q = 0; q < 3; q++) { u += R(-6, 6); t -= R(6, 14); line.push([u, Math.max(a + 2, t)]); }
+          cracks.push(line);
+        }
+      }
+      slabs.push({ pts, c, hwB, hwT, a, b, dL, dR, cracks });
+    }
+    const extent = (t) => {
+      let lo = Infinity, hi = -Infinity;
+      for (const sl of slabs) {
+        const e = polyExtent(sl.pts, t);
+        if (e) { if (e[0] < lo) lo = e[0]; if (e[1] > hi) hi = e[1]; }
+      }
+      return lo <= hi ? [lo, hi] : [cx, cx];
+    };
+    return { kind: 'lava', slabs, extent };
+  }
+
+  // Glaciers: long ice spires, in two families like the forest's pines and oaks. A "crystal" has a straight-sided
+  // shaft that ends in a sharp pyramid; a "cone" tapers all the way up. Each side is a broken line with a few kinks
+  // and small step-ins, so no two spires match. As with the rocks, the silhouette is one solid stretch per row, and
+  // the painting and the collision test both come from it.
+  function lookIce(w, h, rng) {
+    const R = (a, b) => a + rng() * (b - a);
+    const cx = w / 2;
+    const crystal = rng() < 0.5;
+    const lean = R(-0.16, 0.16) * w;                       // how far the tip sits off-centre
+    const shoulder = crystal ? R(0.42, 0.72) : 0;          // where a crystal's straight shaft turns into its tip
+    const q = R(0.95, 1.2);                                // a little over 1 makes the tip needle-sharp
+    const base = cx * R(0.9, 1.0);
+    const ledges = [];
+    const nl = rng() < 0.7 ? (h > 200 ? 2 : 1) : 0;       // the shaft steps in a little at one or two heights
+    for (let i = 0; i < nl; i++) ledges.push({ s: R(0.16, 0.6), f: R(0.8, 0.92) });
+    ledges.sort((a, b) => a.s - b.s);
+    const eps = 1.5 / h;
+    const halfW = (s) => {
+      let hw;
+      if (s <= shoulder) hw = lerp(base, base * 0.88, shoulder ? s / shoulder : 0);
+      else hw = base * (shoulder ? 0.88 : 1) * Math.pow(Math.max(0, 1 - (s - shoulder) / (1 - shoulder)), q);
+      for (const l of ledges) if (s > l.s) hw *= l.f;
+      return hw;
+    };
+    const centre = (s) => cx + lean * Math.pow(s, 1.6);
+    // heights where the outline bends: the base, each step-in (twice, for the little ledge), the shoulder, a few kinks, the tip
+    let stops = [0, 1];
+    for (const l of ledges) stops.push(l.s, l.s + eps);
+    if (crystal) stops.push(shoulder);
+    const nk = clamp(Math.round(h / 110), 1, 4);
+    for (let i = 0; i < nk; i++) stops.push(R(shoulder || 0.1, 0.92));
+    stops.sort((a, b) => a - b);
+    stops = stops.filter((v, i) => i === 0 || v - stops[i - 1] > 0.0005);   // drop bends that land on top of each other
+    const off = R(-0.25, 0.25);                            // the ridge line runs a little off-centre
+    const Lp = [], Rp = [], ridge = [];
+    stops.forEach((sv, j) => {
+      const tip = j === stops.length - 1, first = j === 0;
+      const hl = tip ? 1.2 : halfW(sv) * (first ? R(0.97, 1.0) : R(0.94, 1.05));
+      const hr = tip ? 1.2 : halfW(sv) * (first ? R(0.97, 1.0) : R(0.94, 1.05));
+      const c = centre(sv), t = sv * h;
+      Lp.push([clamp(c - hl, 0, w), t]);
+      Rp.push([clamp(c + hr, 0, w), t]);
+      ridge.push([clamp(c + off * halfW(sv), 0, w), t]);
+    });
+    const at = (P, t) => {
+      if (t <= P[0][1]) return P[0][0];
+      for (let i = 1; i < P.length; i++) {
+        if (t <= P[i][1]) {
+          const a = P[i - 1], b = P[i];
+          return a[0] + (b[0] - a[0]) * ((t - a[1]) / Math.max(1e-6, b[1] - a[1]));
+        }
+      }
+      return P[P.length - 1][0];
+    };
+    const extent = (t) => [at(Lp, t), at(Rp, t)];
+    // facets: a bright strip down the left, a cooler face right of the ridge; plus growth lines, ledge frost and glints
+    const revMap = (A, fn) => A.slice().reverse().map(fn);
+    const light = Lp.concat(revMap(Lp, (pt) => { const j = Lp.indexOf(pt); return [pt[0] + 0.3 * (ridge[j][0] - pt[0]), pt[1]]; }));
+    const dark = ridge.concat(revMap(Rp, (pt) => [pt[0] + 30, pt[1]]));
+    const lines = [];
+    const nlines = h > 90 ? (rng() < 0.5 ? 2 : 3) : 1;
+    for (let i = 0; i < nlines; i++) {
+      const t = R(0.12, 0.7) * h, e = extent(t), rr0 = at(ridge, t);
+      lines.push([[e[0] + 2, t], [rr0 - 2, t + R(4, 10)]]);
+    }
+    const frost = ledges.map((l) => { const t = (l.s + eps) * h, e = extent(t); return [[e[0] + 1, t], [e[1] - 1, t]]; });
+    const glints = [];
+    if (h >= 90) {
+      const ng = rng() < 0.55 ? 1 : 2;
+      for (let i = 0; i < ng; i++) {
+        const t = R(0.2, 0.72) * h, e = extent(t), r = R(3, 5);
+        glints.push({ u: (e[0] + e[1]) / 2 + R(-0.25, 0.25) * (e[1] - e[0]) * 0.5, t, r });
+      }
+    }
+    return { kind: 'ice', outline: Lp.concat(Rp.slice().reverse()), ridge, light, dark, lines, frost, glints, extent };
+  }
+
+  // Tesla: a tall coil, built bottom-up from the wall: a base plate, a flare into the winding, a long shaft wound with
+  // copper (with a few collars along it), a wide toroid ring, a short neck and a round terminal ball on the tip. Every
+  // width is a function of height, so the silhouette is one solid stretch per row and the painting and the collision
+  // test both come from it. The lightning is drawn live over the top (see drawCoilFx) and never changes the hitbox.
+  function lookCoil(w, h, rng) {
+    const R = (a, b) => a + rng() * (b - a);
+    const cx = w / 2;
+    const br = clamp(Math.min(w * 0.12, h * 0.15), 5, 14);        // terminal ball radius
+    const nk = clamp(br * 0.45, 2, 5);                             // neck between ring and ball
+    const tt = clamp(Math.min(w * 0.17, h * 0.2), 8, 24);         // ring thickness
+    const pb = clamp(h * 0.08, 6, 16);                             // base plate
+    const fl = clamp(h * 0.07, 6, 18);                             // flare from the plate into the shaft
+    const ballBot = h - 2 * br, torTop = ballBot - nk, torBot = torTop - tt, torMid = (torBot + torTop) / 2;
+    const hwP = cx * R(0.9, 1.0), hwS = cx * R(0.27, 0.37), hwT = cx * R(0.74, 0.93);
+    const hwN = clamp(br * 0.35, 1.6, 4);
+    const taper = R(0.86, 1.0);                                    // the shaft may narrow a little towards the ring
+    const s0 = pb + fl, shaftLen = torBot - s0;
+    const collars = [];
+    const nc = clamp(Math.round(shaftLen / 90), 0, 4);
+    for (let k = 0; k < nc; k++) {
+      const slot = shaftLen / (nc + 1), t0 = s0 + slot * (k + 1) + R(-0.12, 0.12) * slot;
+      collars.push({ t0, t1: t0 + R(4, 6.5) });
+    }
+    const ellipse = (t, c, a, b) => { const d = (t - c) / b; return d * d >= 1 ? 0 : a * Math.sqrt(1 - d * d); };
+    const shaftHW = (t) => hwS * lerp(1, taper, clamp((t - s0) / Math.max(1, shaftLen), 0, 1));
+    const hwAt = (t) => {
+      let hw;
+      if (t < pb) hw = hwP;
+      else if (t < s0) hw = lerp(hwP * 0.6, hwS, Math.pow((t - pb) / fl, 0.7));
+      else hw = shaftHW(t);
+      for (const c of collars) if (t >= c.t0 && t <= c.t1) hw = Math.max(hw, hwS * 1.28);
+      if (t >= torBot && t <= torTop) hw = Math.max(t <= torMid ? shaftHW(t) : 0, ellipse(t, torMid, hwT, tt / 2), hwN);
+      else if (t > torTop && t < ballBot) hw = hwN;
+      else if (t >= ballBot) hw = Math.max(ellipse(t, ballBot + br, br, br), t < ballBot + br ? hwN : 0);
+      return hw;
+    };
+    // outline: sample the width at every bend, and around the ring and the ball by angle so the curves stay smooth
+    let ts = [0, pb - 0.01, pb];
+    for (let k = 1; k <= 16; k++) ts.push(pb + fl * k / 16);
+    for (const c of collars) ts.push(c.t0 - 0.01, c.t0, c.t1, c.t1 + 0.01);
+    for (let k = 0; k <= 14; k++) ts.push(torMid + (tt / 2) * Math.sin(-Math.PI / 2 + Math.PI * k / 14));
+    ts.push(torTop + 0.01, ballBot);
+    for (let k = 0; k <= 14; k++) ts.push(ballBot + br + br * Math.sin(-Math.PI / 2 + Math.PI * k / 14));
+    ts.push(h);
+    ts = ts.filter((t) => t >= 0 && t <= h).sort((a, b) => a - b).filter((t, i, A) => i === 0 || t - A[i - 1] > 0.004);
+    const Lp = [], Rp = [];
+    ts.forEach((t, i) => {
+      const hw = Math.min(cx, Math.max(hwAt(t), i === ts.length - 1 ? 0.6 : 0));
+      Lp.push([cx - hw, t]);
+      Rp.push([cx + hw, t]);
+    });
+    const extent = (t) => { const hw = hwAt(t); return [cx - hw, cx + hw]; };
+    return {
+      kind: 'coil', cx, w, h, br, tt, pb, fl, s0, torBot, torTop, torMid, ballBot, ballMid: ballBot + br,
+      hwP, hwS, hwT, hwN, collars, outline: Lp.concat(Rp.slice().reverse()), extent, seed: Math.floor(rng() * 1e6)
+    };
+  }
+
+  // Ocean: a swaying kelp/seaweed cluster, built from a few tapering blades that each wander side to side as they
+  // rise (a fixed S-curve, not animated, so the silhouette never disagrees with the hitbox). Every blade shares the
+  // same base and the extent at a height is just the widest/narrowest edge across whichever blades reach that high.
+  function lookKelp(w, h, rng) {
+    const R = (a, b) => a + rng() * (b - a);
+    const cx = w / 2;
+    const nB = clamp(Math.round(w / 15) + 1, 2, 4);
+    const blades = [];
+    for (let i = 0; i < nB; i++) {
+      const spread = nB > 1 ? (i / (nB - 1) - 0.5) * w * R(0.5, 0.8) : 0;
+      blades.push({
+        bx: cx + spread,
+        bh: h * R(0.68, 1.0),
+        baseW: clamp(w * R(0.1, 0.16), 3, 9),
+        amp: R(5, 12) * clamp(w / 34, 0.5, 1.7),
+        freq: R(1.3, 2.1),
+        phase: R(0, 6.28)
+      });
+    }
+    blades.sort((a, b) => b.bh - a.bh);
+    const bladeAt = (b, t) => {
+      const f = clamp(t / b.bh, 0, 1);
+      const lean = b.amp * Math.sin(f * Math.PI * b.freq + b.phase) * f;
+      const hw = Math.max(0.8, b.baseW * (1 - f * 0.92));
+      const c = b.bx + lean;
+      return [c - hw, c + hw];
+    };
+    const extent = (t) => {
+      let lo = Infinity, hi = -Infinity;
+      for (const b of blades) {
+        if (t > b.bh) continue;
+        const [l, r] = bladeAt(b, t);
+        if (l < lo) lo = l;
+        if (r > hi) hi = r;
+      }
+      if (lo === Infinity) return [cx, cx];
+      return [clamp(lo, 0, w), clamp(hi, 0, w)];
+    };
+    return { kind: 'kelp', cx, blades, bladeAt, extent };
+  }
+
+  // Ocean: a chunky reef mound built the same way as a rock (a broken outline sampled top to bottom), but rounder
+  // and bumpier, in one of a handful of bright coral colours, with a scatter of small polyp dots for texture.
+  function lookCoral(w, h, rng) {
+    const R = (a, b) => a + rng() * (b - a);
+    const nV = clamp(Math.round(h / 28) + 4, 6, 14);
+    const taper = R(0.3, 0.58), pw = R(0.9, 1.5), lean = R(-0.1, 0.1);
+    const bumps = [];
+    const nb = 2 + Math.floor(rng() * 3);
+    for (let i = 0; i < nb; i++) bumps.push({ s0: R(0.15, 0.85), sg: R(0.09, 0.18), amp: R(0.24, 0.46) });
+    const ss = [0];
+    for (let j = 1; j < nV - 1; j++) ss.push(clamp(j / (nV - 1) + R(-0.3, 0.3) / (nV - 1), 0.02, 0.98));
+    ss.push(1);
+    ss.sort((a, b) => a - b);
+    const Lp = [], Rp = [];
+    for (let j = 0; j < nV; j++) {
+      const s = ss[j];
+      let hw = 0.5 * (1 - taper * Math.pow(s, pw));
+      for (const b of bumps) hw += b.amp * 0.5 * Math.exp(-Math.pow((s - b.s0) / b.sg, 2));
+      const c = 0.5 + lean * s;
+      let hl = hw * (1 + (j === 0 ? 0 : R(-0.14, 0.14)));
+      let hr = hw * (1 + (j === 0 ? 0 : R(-0.14, 0.14)));
+      if (j === nV - 1) { hl = R(0.08, 0.16); hr = R(0.08, 0.16); }
+      Lp.push([clamp((c - hl) * w, 0, w), s * h]);
+      Rp.push([clamp((c + hr) * w, 0, w), s * h]);
+    }
+    const at = (P, t) => {
+      if (t <= P[0][1]) return P[0][0];
+      for (let i = 1; i < P.length; i++) {
+        if (t <= P[i][1]) {
+          const a = P[i - 1], b = P[i];
+          return a[0] + (b[0] - a[0]) * ((t - a[1]) / Math.max(1e-6, b[1] - a[1]));
+        }
+      }
+      return P[P.length - 1][0];
+    };
+    const extent = (t) => [at(Lp, t), at(Rp, t)];
+    const ridge = [0, 0.32, 0.64, 1].map((s) => [clamp((0.5 + lean * s + R(-0.08, 0.08)) * w, 0, w), s * h]);
+    const dark = ridge.concat([[w + 30, h], [w + 30, 0]]);
+    const light = [[-30, h * 0.3]].concat(ridge.slice(1).map(([u, t]) => [u - w * 0.16, t]), [[-30, h]]);
+    const variant = Math.floor(rng() * 4);
+    const polyps = [];
+    const np = clamp(Math.round(h / 26), 3, 9);
+    for (let i = 0; i < np; i++) {
+      const t = R(h * 0.08, h * 0.94), e = extent(t), sp = e[1] - e[0];
+      if (sp < 4) continue;
+      polyps.push({ u: e[0] + R(0.2, 0.8) * sp, t, r: R(1.1, 2.4) });
+    }
+    return { kind: 'coral', outline: Lp.concat(Rp.slice().reverse()), dark, light, variant, polyps, extent };
+  }
+
+  // Lighthouse: a tapering stone shaft, a railed gallery walkway, a glazed lamp room with a bright lit core, then a
+  // conical roof and a small finial ball on top. Every width is a function of height (like the tower and pipe), so
+  // the silhouette is one solid stretch per row and the painting and the collision test both come from it. The
+  // sweeping beam is drawn live over the top (see drawLighthouseBeam) and never changes the hitbox.
+  function lookLighthouse(w, h, rng) {
+    const R = (a, b) => a + rng() * (b - a);
+    const cx = w / 2;
+    const galleryH = clamp(h * 0.022, 2, 6);
+    const lampH = clamp(h * R(0.12, 0.16), 14, 42);
+    const capH = clamp(h * R(0.09, 0.12), 9, 24);
+    const finialH = clamp(capH * 0.3, 3, 8);
+    const bodyH = Math.max(20, h - galleryH - lampH - capH - finialH);
+    const baseHW = clamp(cx * R(0.62, 0.78), 7, cx);
+    const shaftTopHW = baseHW * R(0.58, 0.74);
+    const galleryHW = clamp(shaftTopHW * R(1.3, 1.5), shaftTopHW + 2, cx);
+    const lampHW = clamp(galleryHW * R(0.74, 0.86), Math.min(shaftTopHW * 0.94, galleryHW - 1), galleryHW - 1);
+    const finialR = clamp(Math.min(w, h) * 0.024, 1.2, 3.4);
+    const shaftHW = (t) => lerp(baseHW, shaftTopHW, clamp(t / bodyH, 0, 1));
+    const bandY = R(0.32, 0.56) * bodyH, bandH = clamp(h * 0.026, 3, 9);
+    // a few lit portholes up the shaft, decided once here so painting is just circles
+    const nw = clamp(Math.round(bodyH / 78), 1, 4);
+    const windows = [];
+    for (let i = 0; i < nw; i++) {
+      const t = (i + 0.65) * (bodyH / (nw + 0.3));
+      const hwt = shaftHW(t);
+      windows.push({ u: R(-0.32, 0.32) * hwt, t, r: clamp(hwt * 0.22, 1.6, 4), warm: rng() < 0.76 });
+    }
+    const galleryY1 = bodyH + galleryH, lampY1 = galleryY1 + lampH, capY1 = lampY1 + capH;
+    const extent = (t) => {
+      if (t <= bodyH) { const hw = shaftHW(t); return [cx - hw, cx + hw]; }
+      if (t <= galleryY1) return [cx - galleryHW, cx + galleryHW];
+      if (t <= lampY1) return [cx - lampHW, cx + lampHW];
+      if (t <= capY1) { const f = (t - lampY1) / capH; const hw = lerp(lampHW, finialR, f); return [cx - hw, cx + hw]; }
+      return [cx - finialR, cx + finialR];
+    };
+    return {
+      kind: 'lighthouse', cx, bodyH, galleryH, lampH, capH, finialH, baseHW, shaftTopHW, galleryHW, lampHW, finialR,
+      bandY, bandH, windows, shaftHW, galleryY1, lampY1, capY1, lampMid: (galleryY1 + lampY1) / 2,
+      extent, seed: Math.floor(rng() * 1e6)
+    };
+  }
+
   const LOOKS = {
     forest: (w, h, rng, kind) => ((kind || (rng() < 0.62 ? 'pine' : 'oak')) === 'pine' ? lookPine(w, h, rng) : lookOak(w, h, rng)),
-    rocky: (w, h, rng) => lookRock(w, h, rng)
+    rocky: (w, h, rng) => lookRock(w, h, rng),
+    city: (w, h, rng) => lookTower(w, h, rng),
+    dawn: (w, h, rng) => lookPipe(w, h, rng),
+    lava: (w, h, rng) => lookLava(w, h, rng),
+    ice: (w, h, rng) => lookIce(w, h, rng),
+    coil: (w, h, rng) => lookCoil(w, h, rng),
+    ocean: (w, h, rng, kind) => {
+      const pick = kind === 'pine' ? 'kelp' : kind === 'oak' ? 'coral' : (rng() < 0.5 ? 'kelp' : 'coral');
+      return pick === 'kelp' ? lookKelp(w, h, rng) : lookCoral(w, h, rng);
+    },
+    lighthouse: (w, h, rng) => lookLighthouse(w, h, rng)
   };
 
   // Turn a silhouette into thin slices the collision test can walk through quickly.
@@ -988,7 +1609,310 @@
     }
     g.restore();
   }
-  const PAINT = { pine: paintPine, oak: paintOak, rock: paintRock };
+  function paintTower(g, o, P, th, flat) {
+    const L = o.look, cx = L.cx;
+    fillPoly(g, P, [[cx - L.antennaHW, L.bodyH], [cx + L.antennaHW, L.bodyH], [cx + L.antennaHW * 0.4, L.bodyH + L.antennaH], [cx - L.antennaHW * 0.4, L.bodyH + L.antennaH]], flat ? th.shadowSolid : th.antenna);
+    for (const q of L.tiers) {
+      fillPoly(g, P, [[cx - q.hw, q.a], [cx + q.hw, q.a], [cx + q.hw, q.b], [cx - q.hw, q.b]], flat ? th.shadowSolid : th.body);
+      if (!flat) {
+        fillPoly(g, P, [[cx + q.hw * 0.35, q.a], [cx + q.hw, q.a], [cx + q.hw, q.b], [cx + q.hw * 0.35, q.b]], th.bodyShade);
+        fillPoly(g, P, [[cx - q.hw, q.a], [cx - q.hw * 0.82, q.a], [cx - q.hw * 0.82, q.b], [cx - q.hw, q.b]], th.bodyLight);
+      }
+    }
+    if (flat) return;
+    for (const wnd of L.windows) {
+      g.fillStyle = wnd.warm ? th.windowLit : th.windowCool;
+      const a = P(wnd.x, wnd.y), b = P(wnd.x + wnd.w, wnd.y + wnd.h);
+      g.fillRect(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]));
+    }
+    const tip = P(cx, L.bodyH + L.antennaH);
+    g.fillStyle = th.antennaLight;
+    g.beginPath(); g.arc(tip[0], tip[1], 1.6, 0, Math.PI * 2); g.fill();
+  }
+  function paintPipe(g, o, P, th, flat) {
+    const L = o.look, cx = L.cx;
+    fillPoly(g, P, [[cx - L.pipeHW, 0], [cx + L.pipeHW, 0], [cx + L.pipeHW, L.bodyH], [cx - L.pipeHW, L.bodyH]], flat ? th.shadowSolid : th.pipe);
+    if (!flat) {
+      fillPoly(g, P, [[cx + L.pipeHW * 0.3, 0], [cx + L.pipeHW, 0], [cx + L.pipeHW, L.bodyH], [cx + L.pipeHW * 0.3, L.bodyH]], th.pipeShade);
+      fillPoly(g, P, [[cx - L.pipeHW, 0], [cx - L.pipeHW * 0.75, 0], [cx - L.pipeHW * 0.75, L.bodyH], [cx - L.pipeHW, L.bodyH]], th.pipeLight);
+    }
+    fillPoly(g, P, [[cx - L.pipeHW, L.bodyH], [cx + L.pipeHW, L.bodyH], [cx + L.capHW, L.bodyH + L.capH], [cx - L.capHW, L.bodyH + L.capH]], flat ? th.shadowSolid : th.pipeShade);
+    if (flat) return;
+    for (const jy of L.joints) {
+      const y0 = jy - L.flangeH / 2, y1 = jy + L.flangeH / 2;
+      fillPoly(g, P, [[cx - L.flangeHW, y0], [cx + L.flangeHW, y0], [cx + L.flangeHW, y1], [cx - L.flangeHW, y1]], th.flange);
+      g.fillStyle = th.rivet;
+      for (let k = -2; k <= 2; k++) {
+        const rx = cx + k * (L.flangeHW * 0.42);
+        if (Math.abs(rx - cx) > L.flangeHW - 1.5) continue;
+        const q = P(rx, y0 + L.flangeH * 0.22);
+        g.fillRect(q[0] - 1, q[1] - 1, 2, 2);
+      }
+    }
+    if (L.valveAt != null) {
+      const r = Math.min(L.pipeHW * 0.82, 5.5);
+      const c = P(cx, L.valveAt);
+      g.strokeStyle = th.rivet; g.lineWidth = 1.3;
+      g.beginPath(); g.arc(c[0], c[1], r, 0, Math.PI * 2); g.stroke();
+      for (let a = 0; a < 4; a++) {
+        const ang = a * Math.PI / 2 + 0.4;
+        g.beginPath(); g.moveTo(c[0], c[1]); g.lineTo(c[0] + Math.cos(ang) * r, c[1] + Math.sin(ang) * r); g.stroke();
+      }
+    }
+    g.fillStyle = th.steam;
+    g.globalAlpha = 0.5;
+    const tip = P(cx, L.bodyH + L.capH * 0.7);
+    g.beginPath(); g.arc(tip[0] - 1.5, tip[1], 2.2, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(tip[0] + 1.5, tip[1] - 1, 1.8, 0, Math.PI * 2); g.fill();
+    g.globalAlpha = 1;
+  }
+  function paintLava(g, o, P, th, flat) {
+    const L = o.look;
+    if (flat) { for (const sl of L.slabs) fillPoly(g, P, sl.pts, th.shadowSolid); return; }
+    const trace = (line) => {
+      g.beginPath();
+      line.forEach((pt, i) => { const q = P(pt[0], pt[1]); if (i) g.lineTo(q[0], q[1]); else g.moveTo(q[0], q[1]); });
+    };
+    g.lineJoin = 'round';
+    g.lineCap = 'round';
+    L.slabs.forEach((sl, k) => {
+      const { c, hwB, hwT, a, b } = sl;
+      fillPoly(g, P, sl.pts, th.crust);
+      g.save();
+      pathPoly(g, P, sl.pts);
+      g.clip();
+      fillPoly(g, P, [[c + hwB * 0.3, a - 4], [c + hwB + 30, a - 4], [c + hwT + 30, b + 4], [c + hwT * 0.3, b + 4]], th.crustShade);
+      g.globalAlpha = 0.6;
+      fillPoly(g, P, [[c - hwB - 30, a - 4], [c - hwB * 0.7, a - 4], [c - hwT * 0.7, b + 4], [c - hwT - 30, b + 4]], th.crustLight);
+      g.globalAlpha = 1;
+      for (const line of sl.cracks) {
+        trace(line); g.strokeStyle = th.lava; g.lineWidth = 2.6; g.stroke();
+        trace(line); g.strokeStyle = th.lavaHot; g.lineWidth = 1; g.stroke();
+      }
+      if (k === L.slabs.length - 1) {                  // the tip is molten: a hot band along the top edge
+        const capH = clamp((b - a) * 0.3, 8, 24), tl = b - sl.dL, tr = b - sl.dR, ex = hwB + 30;
+        fillPoly(g, P, [[c - ex, tl + 3], [c + ex, tr + 3], [c + ex, tr - capH], [c - ex, tl - capH]], th.lava);
+        fillPoly(g, P, [[c - ex, tl + 3], [c + ex, tr + 3], [c + ex, tr - capH * 0.4], [c - ex, tl - capH * 0.4]], th.lavaHot);
+      }
+      g.restore();
+      // a glowing seam around every block
+      pathPoly(g, P, sl.pts);
+      g.globalAlpha = 0.3; g.strokeStyle = th.lava; g.lineWidth = 5; g.stroke();
+      g.globalAlpha = 1; g.lineWidth = 1.8; g.stroke();
+    });
+  }
+  function paintIce(g, o, P, th, flat) {
+    const L = o.look;
+    fillPoly(g, P, L.outline, flat ? th.shadowSolid : th.ice);
+    if (flat) return;
+    g.save();
+    pathPoly(g, P, L.outline);
+    g.clip();
+    fillPoly(g, P, L.dark, th.iceShade);
+    g.globalAlpha = 0.9;
+    fillPoly(g, P, L.light, th.iceLight);
+    g.globalAlpha = 1;
+    g.lineJoin = 'round';
+    g.lineCap = 'round';
+    const trace = (line) => {
+      g.beginPath();
+      line.forEach((pt, i) => { const q = P(pt[0], pt[1]); if (i) g.lineTo(q[0], q[1]); else g.moveTo(q[0], q[1]); });
+    };
+    g.strokeStyle = th.iceLight; g.globalAlpha = 0.75; g.lineWidth = 1.5;   // the ridge between the two faces
+    trace(L.ridge); g.stroke();
+    g.globalAlpha = 0.5; g.lineWidth = 1.2;                                  // growth lines across the left face
+    for (const line of L.lines) { trace(line); g.stroke(); }
+    g.globalAlpha = 0.95; g.lineWidth = 2;                                   // frost along each step-in
+    for (const line of L.frost) { trace(line); g.stroke(); }
+    g.globalAlpha = 1;
+    g.fillStyle = th.iceLight;                                               // a couple of glints
+    for (const s of L.glints) {
+      const r = s.r, k = r * 0.28;
+      fillPoly(g, P, [[s.u, s.t + r], [s.u + k, s.t + k], [s.u + r, s.t], [s.u + k, s.t - k], [s.u, s.t - r], [s.u - k, s.t - k], [s.u - r, s.t], [s.u - k, s.t + k]], th.iceLight);
+    }
+    g.restore();
+    pathPoly(g, P, L.outline);
+    g.strokeStyle = th.iceEdge; g.lineWidth = 2;
+    g.stroke();
+  }
+  function paintCoil(g, o, P, th, flat) {
+    const L = o.look, cx = L.cx, w = L.w;
+    fillPoly(g, P, L.outline, flat ? th.shadowSolid : th.coilBody);
+    if (flat) return;
+    const band = (t0, t1, u0, u1, color, alpha) => {
+      g.globalAlpha = alpha;
+      fillPoly(g, P, [[u0, t0], [u1, t0], [u1, t1], [u0, t1]], color);
+      g.globalAlpha = 1;
+    };
+    const hline = (t, u0, u1) => { const a = P(u0, t), b = P(u1, t); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); };
+    const ring = (t, a, b) => { const c = P(cx, t); g.beginPath(); g.ellipse(c[0], c[1], a, b, 0, 0, Math.PI * 2); };
+    g.save();
+    pathPoly(g, P, L.outline);
+    g.clip();
+    // base plate, and the flare with its primary winding
+    band(-2, L.s0, -5, w + 5, th.coilMetal, 1);
+    band(L.pb - 1.5, L.pb + 0.5, -5, w + 5, th.coilLight, 0.35);
+    g.strokeStyle = th.copper; g.lineWidth = 1.6; g.beginPath();
+    hline(L.pb + L.fl * 0.4, cx - L.hwS * 1.6, cx + L.hwS * 1.6);
+    hline(L.pb + L.fl * 0.75, cx - L.hwS * 1.6, cx + L.hwS * 1.6);
+    g.stroke();
+    // the shaft: a lit side, a shaded side, copper windings, then a touch of roundness over the top
+    const y1 = L.torMid;
+    band(L.s0, y1, -5, w + 5, th.coilShade, 1);                       // a dark core for the copper to sit on
+    band(L.s0, y1, cx - L.hwS * 1.4, cx - L.hwS * 0.3, th.coilLight, 0.28);
+    g.strokeStyle = th.copper; g.lineWidth = 2; g.beginPath();
+    for (let t = L.s0 + 3; t < L.torBot - 1; t += 4.4) hline(t, cx - L.hwS * 1.4, cx + L.hwS * 1.4);
+    g.stroke();
+    band(L.s0, y1, cx + L.hwS * 0.2, cx + L.hwS * 1.4, th.deep, 0.42);
+    band(L.s0, y1, cx - L.hwS * 1.4, cx - L.hwS * 0.55, '#FFFFFF', 0.2);
+    for (const c of L.collars) {
+      band(c.t0, c.t1, cx - L.hwS * 1.4, cx + L.hwS * 1.4, th.coilMetal, 1);
+      band(c.t1 - 1.4, c.t1, cx - L.hwS * 1.4, cx + L.hwS * 1.4, th.coilLight, 0.5);
+    }
+    // the ring: chrome, shaded on the right, with a charged rim
+    g.fillStyle = th.chrome; ring(L.torMid, L.hwT, L.tt / 2); g.fill();
+    g.save(); ring(L.torMid, L.hwT, L.tt / 2); g.clip();
+    band(L.torBot - 2, L.torTop + 2, cx + L.hwT * 0.3, w + 5, th.chromeShade, 1);
+    g.restore();
+    g.strokeStyle = th.arc; g.globalAlpha = 0.85; g.lineWidth = 1.4; ring(L.torMid, L.hwT, L.tt / 2); g.stroke(); g.globalAlpha = 1;
+    // the terminal ball
+    g.fillStyle = th.chrome; ring(L.ballMid, L.br, L.br); g.fill();
+    g.save(); ring(L.ballMid, L.br, L.br); g.clip();
+    band(L.ballBot - 2, L.h + 2, cx + L.br * 0.25, cx + L.br + 3, th.chromeShade, 1);
+    g.restore();
+    const hi = P(cx - L.br * 0.35, L.ballMid + L.br * 0.3);
+    g.fillStyle = '#FFFFFF'; g.globalAlpha = 0.9; g.beginPath(); g.arc(hi[0], hi[1], Math.max(1.2, L.br * 0.22), 0, Math.PI * 2); g.fill();
+    g.strokeStyle = th.arc; g.globalAlpha = 0.9; g.lineWidth = 1.2; ring(L.ballMid, L.br, L.br); g.stroke(); g.globalAlpha = 1;
+    g.restore();
+  }
+  function paintKelp(g, o, P, th, flat) {
+    const L = o.look;
+    for (const b of L.blades) {
+      const steps = 14;
+      const left = [], right = [];
+      for (let k = 0; k <= steps; k++) {
+        const t = (b.bh * k) / steps;
+        const [l, r] = L.bladeAt(b, t);
+        left.push([l, t]); right.push([r, t]);
+      }
+      const poly = left.concat(right.slice().reverse());
+      fillPoly(g, P, poly, flat ? th.shadowSolid : th.weed);
+      if (flat) continue;
+      g.save();
+      pathPoly(g, P, poly);
+      g.clip();
+      // a shaded stripe down the trailing side and a light streak down the leading side, so each blade reads as round
+      const shadeSide = [], lightSide = [];
+      for (let k = 0; k <= steps; k++) {
+        const t = (b.bh * k) / steps;
+        const [l, r] = L.bladeAt(b, t);
+        const mid = (l + r) / 2;
+        shadeSide.push([mid + (r - mid) * 0.35, t]);
+        lightSide.push([mid - (mid - l) * 0.35, t]);
+      }
+      fillPoly(g, P, right.concat(shadeSide.slice().reverse()), th.weedShade);
+      g.globalAlpha = 0.85;
+      fillPoly(g, P, left.concat(lightSide.slice().reverse()), th.weedLight);
+      g.globalAlpha = 1;
+      g.restore();
+    }
+    if (flat) return;
+    g.fillStyle = th.stem;
+    const bw = clamp(o.w * 0.1, 3, 8);
+    fillPoly(g, P, [[L.cx - bw, 0], [L.cx + bw, 0], [L.cx + bw * 0.6, 6], [L.cx - bw * 0.6, 6]], th.stem);
+  }
+
+  function paintCoral(g, o, P, th, flat) {
+    const L = o.look, pal = th.coralPalette[L.variant % th.coralPalette.length];
+    fillPoly(g, P, L.outline, flat ? th.shadowSolid : pal.base);
+    if (flat) return;
+    g.save();
+    pathPoly(g, P, L.outline);
+    g.clip();
+    fillPoly(g, P, L.dark, pal.shade);
+    g.globalAlpha = 0.55;
+    fillPoly(g, P, L.light, pal.light);
+    g.globalAlpha = 1;
+    g.fillStyle = th.polyp;
+    for (const q of L.polyps) {
+      const c = P(q.u, q.t);
+      g.globalAlpha = 0.85;
+      g.beginPath(); g.arc(c[0], c[1], q.r, 0, Math.PI * 2); g.fill();
+    }
+    g.globalAlpha = 1;
+    g.restore();
+  }
+
+  function paintLighthouse(g, o, P, th, flat) {
+    const L = o.look, cx = L.cx;
+    // the tapering stone shaft
+    fillPoly(g, P, [[cx - L.baseHW, 0], [cx + L.baseHW, 0], [cx + L.shaftTopHW, L.bodyH], [cx - L.shaftTopHW, L.bodyH]], flat ? th.shadowSolid : th.tower);
+    if (!flat) {
+      fillPoly(g, P, [[cx, 0], [cx + L.baseHW, 0], [cx + L.shaftTopHW, L.bodyH], [cx, L.bodyH]], th.towerShade);
+      fillPoly(g, P, [[cx - L.baseHW, 0], [cx - L.baseHW * 0.72, 0], [cx - L.shaftTopHW * 0.72, L.bodyH], [cx - L.shaftTopHW, L.bodyH]], th.towerLight);
+      // a dark trim band partway up
+      const bw0 = L.shaftHW(L.bandY), bw1 = L.shaftHW(L.bandY + L.bandH);
+      fillPoly(g, P, [[cx - bw0, L.bandY], [cx + bw0, L.bandY], [cx + bw1, L.bandY + L.bandH], [cx - bw1, L.bandY + L.bandH]], th.band);
+      // a few lit portholes up the shaft
+      for (const wnd of L.windows) {
+        const c = P(cx + wnd.u, wnd.t);
+        g.fillStyle = wnd.warm ? th.glassCore : th.band;
+        g.globalAlpha = wnd.warm ? 0.95 : 0.6;
+        g.beginPath(); g.arc(c[0], c[1], wnd.r, 0, Math.PI * 2); g.fill();
+      }
+      g.globalAlpha = 1;
+    }
+    // the railed gallery walkway, wider than the shaft it sits on
+    const gY0 = L.bodyH, gY1 = L.galleryY1;
+    fillPoly(g, P, [[cx - L.galleryHW, gY0], [cx + L.galleryHW, gY0], [cx + L.galleryHW, gY1], [cx - L.galleryHW, gY1]], flat ? th.shadowSolid : th.rail);
+    if (!flat) {
+      g.strokeStyle = th.roofShade;
+      g.lineWidth = 1;
+      g.globalAlpha = 0.8;
+      g.beginPath();
+      for (let k = -3; k <= 3; k++) {
+        const rx = cx + k * (L.galleryHW * 0.4);
+        if (Math.abs(rx - cx) > L.galleryHW - 1) continue;
+        const a = P(rx, gY0), b = P(rx, gY1);
+        g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]);
+      }
+      g.stroke();
+      g.globalAlpha = 1;
+    }
+    // the glazed lamp room, with a bright core where the lamp mechanism sits
+    const lY0 = gY1, lY1 = L.lampY1;
+    fillPoly(g, P, [[cx - L.lampHW, lY0], [cx + L.lampHW, lY0], [cx + L.lampHW, lY1], [cx - L.lampHW, lY1]], flat ? th.shadowSolid : th.rail);
+    if (!flat) {
+      fillPoly(g, P, [[cx - L.lampHW * 0.82, lY0 + 1.5], [cx + L.lampHW * 0.82, lY0 + 1.5], [cx + L.lampHW * 0.82, lY1 - 1.5], [cx - L.lampHW * 0.82, lY1 - 1.5]], th.glass);
+      g.strokeStyle = th.rail;
+      g.lineWidth = 1.3;
+      g.beginPath();
+      for (let k = -1; k <= 1; k++) {
+        const rx = cx + k * L.lampHW * 0.55;
+        const a = P(rx, lY0), b = P(rx, lY1);
+        g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]);
+      }
+      g.stroke();
+      const c = P(cx, (lY0 + lY1) / 2);
+      g.fillStyle = th.glassCore;
+      g.beginPath(); g.arc(c[0], c[1], Math.max(2, L.lampHW * 0.42), 0, Math.PI * 2); g.fill();
+    }
+    // the conical roof
+    const rY0 = lY1, rY1 = L.capY1;
+    fillPoly(g, P, [[cx - L.lampHW, rY0], [cx + L.lampHW, rY0], [cx + L.finialR, rY1], [cx - L.finialR, rY1]], flat ? th.shadowSolid : th.roof);
+    if (!flat) fillPoly(g, P, [[cx, rY0], [cx + L.lampHW, rY0], [cx + L.finialR, rY1], [cx, rY1]], th.roofShade);
+    // the finial rod and ball
+    fillPoly(g, P, [[cx - L.finialR, rY1], [cx + L.finialR, rY1], [cx + L.finialR, o.h], [cx - L.finialR, o.h]], flat ? th.shadowSolid : th.roofShade);
+    if (!flat) {
+      const tip = P(cx, o.h - L.finialR * 0.4);
+      g.fillStyle = th.roofShade;
+      g.beginPath(); g.arc(tip[0], tip[1], L.finialR, 0, Math.PI * 2); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.5)';
+      g.beginPath(); g.arc(tip[0] - L.finialR * 0.3, tip[1] - L.finialR * 0.3, Math.max(0.6, L.finialR * 0.35), 0, Math.PI * 2); g.fill();
+    }
+  }
+
+  const PAINT = { pine: paintPine, oak: paintOak, rock: paintRock, tower: paintTower, pipe: paintPipe, lava: paintLava, ice: paintIce, coil: paintCoil, kelp: paintKelp, coral: paintCoral, lighthouse: paintLighthouse };
 
   // Same hard drop shadow the original blocks have, then the shape itself.
   function paintObstacle(g, o, top, bot, th) {
@@ -1029,6 +1953,32 @@
         if (o.side === 'floor') g.fillRect(o.x, y, o.w, 10); else g.fillRect(o.x, y + o.h - 10, o.w, 10);
       }
     }
+    if (m.style === 'coil') {                          // a frozen crackle at each terminal, so the preview reads as electric
+      g.lineJoin = 'round';
+      items.forEach((o, i) => {
+        const L = o.look, dir = o.side === 'floor' ? -1 : 1, sx = i ? -1 : 1;
+        const bx = o.x + L.cx, by = o.side === 'floor' ? bot - L.ballMid : top + L.ballMid;
+        g.fillStyle = th.arc; g.globalAlpha = 0.16;
+        g.beginPath(); g.arc(bx, by, L.br * 2.6, 0, Math.PI * 2); g.fill();
+        g.beginPath();
+        g.moveTo(bx, by + dir * L.br);
+        for (const [dx, dd] of [[7, 12], [-3, 22], [10, 32], [2, 44], [9, 56]]) g.lineTo(bx + dx * sx, by + dir * (L.br + dd));
+        g.moveTo(bx - 3 * sx, by + dir * (L.br + 22));
+        g.lineTo(bx - 15 * sx, by + dir * (L.br + 30));
+        g.strokeStyle = th.arc; g.lineWidth = 5; g.globalAlpha = 0.3; g.stroke();
+        g.strokeStyle = th.arcCore; g.lineWidth = 1.8; g.globalAlpha = 1; g.stroke();
+      });
+    } else if (m.style === 'lighthouse') {              // a soft static sweep from each lamp, so the preview reads as a beacon
+      items.forEach((o) => {
+        const L = o.look, by = o.side === 'floor' ? bot - L.lampMid : top + L.lampMid, bx = o.x + L.cx;
+        g.fillStyle = th.beam;
+        g.globalAlpha = 0.18;
+        g.beginPath();
+        g.moveTo(bx, by); g.lineTo(bx + 130, by - 26); g.lineTo(bx + 130, by + 26);
+        g.closePath(); g.fill();
+        g.globalAlpha = 1;
+      });
+    }
     g.fillStyle = th.deep;
     g.fillRect(0, 0, Wt, top);
     g.fillRect(0, bot, Wt, Ht - bot);
@@ -1063,10 +2013,10 @@
       '<span class="mapbar"><i></i></span><span class="mapprog"></span>';
     card.innerHTML = kind === 'map'
       ? '<canvas class="mapthumb" width="232" height="136" aria-hidden="true"></canvas>' +
-        '<span class="mapinfo"><span class="maphead"><span class="mapname">' + item.name + '</span><span class="mapstate"></span><span class="mapsel">Selected</span></span>' + tail + '</span>'
+        '<span class="mapinfo"><span class="maphead"><span class="mapname">' + item.name + '</span><span class="mapstate"></span><span class="mapsel">Live</span></span>' + tail + '</span>'
       : '<canvas class="spritethumb" width="176" height="128" aria-hidden="true"></canvas>' +
         '<span class="maphead"><span class="mapname">' + item.name + '</span></span>' +
-        '<span class="maphead"><span class="mapstate"></span><span class="mapsel">Selected</span></span>' + tail;
+        '<span class="maphead"><span class="mapstate"></span><span class="mapsel">Live</span></span>' + tail;
     card._r = {
       state: card.querySelector('.mapstate'), need: card.querySelector('.mapneed'), desc: card.querySelector('.mapdesc'),
       bar: card.querySelector('.mapbar'), fill: card.querySelector('.mapbar i'), prog: card.querySelector('.mapprog'), pill: '', label: ''
@@ -1159,6 +2109,36 @@
     buildMapCards();
     overlay.hidden = true;
     mapOverlay.hidden = false;
+    scrollPickedIntoView();
+  }
+
+  // After a tap the card can change height (it grows when it turns to "Unlocked"), so keep it fully in view.
+  function revealCard(card) {
+    const l = mapList.getBoundingClientRect(), c = card.getBoundingClientRect();
+    if (c.bottom > l.bottom - 10) mapList.scrollTop += c.bottom - (l.bottom - 10);   // 10px and 6px are the list's own padding
+    else if (c.top < l.top + 6) mapList.scrollTop -= l.top + 6 - c.top;
+  }
+
+  // With more maps than fit on screen, open the list with the selected one in view (does nothing if it all fits).
+  function scrollPickedIntoView() {
+    const card = mapList.querySelector('.mapcard.picked');
+    if (!card) return;
+    const l = mapList.getBoundingClientRect(), c = card.getBoundingClientRect();
+    mapList.scrollTop += (c.top + c.height / 2) - (l.top + l.height / 2);
+  }
+
+  // Same two helpers as above, for the sprite grid. Kept separate (rather than sharing one function with an
+  // element argument) so nothing about the existing map list's behaviour changes.
+  function revealSpriteCard(card) {
+    const l = spriteList.getBoundingClientRect(), c = card.getBoundingClientRect();
+    if (c.bottom > l.bottom - 10) spriteList.scrollTop += c.bottom - (l.bottom - 10);
+    else if (c.top < l.top + 6) spriteList.scrollTop -= l.top + 6 - c.top;
+  }
+  function scrollPickedSpriteIntoView() {
+    const card = spriteList.querySelector('.spritecard.picked');
+    if (!card) return;
+    const l = spriteList.getBoundingClientRect(), c = card.getBoundingClientRect();
+    spriteList.scrollTop += (c.top + c.height / 2) - (l.top + l.height / 2);
   }
 
   function playPicked() {
@@ -1187,9 +2167,11 @@
       applyTheme(m);
       refreshMapCards();
       mapMsg.textContent = m.name + ' selected.';
+      revealCard(card);
       return;
     }
     buyTap(m, card, mapMsg, refreshMapCards, (item) => { pickMap = item; applyTheme(item); });   // a new map is selected right away
+    revealCard(card);
   });
   mapPlay.addEventListener('click', playPicked);
   mapBack.addEventListener('click', backFromMaps);
@@ -1198,14 +2180,18 @@
   // ---------- sprites: cosmetic player skins ----------
   // Price of each skin, in points. The first skin is the original look: free and always yours.
   // Skins only change how the player LOOKS. The hitbox and all gameplay stay exactly the same.
-  const SPRITE_PRICES = [10000, 20000, 30000, 40000, 50000];
+  const SPRITE_PRICES = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000, 90000];
   const SPRITES = [
     { id: 'sunny', name: 'Sunny', price: 0, body: '#FFD23F', trail: '255,210,63', blurb: 'The original.', extra: null },
     { id: 'ember', name: 'Ember', price: SPRITE_PRICES[0], body: '#FF8A2B', hi: '#FFC38A', trail: '255,138,43', blurb: 'A little flame on top.', extra: 'flame' },
     { id: 'frost', name: 'Frost', price: SPRITE_PRICES[1], body: '#8FEFFF', hi: '#E9FCFF', trail: '143,239,255', blurb: 'Ice spikes, cool head.', extra: 'spikes' },
     { id: 'slime', name: 'Slime', price: SPRITE_PRICES[2], body: '#C6F03A', hi: '#EEFFA6', trail: '198,240,58', blurb: 'Antennae included.', extra: 'antennae' },
     { id: 'royal', name: 'Royal', price: SPRITE_PRICES[3], body: '#F4F1FF', hi: '#FFFFFF', trail: '244,241,255', blurb: 'Wears the crown.', extra: 'crown' },
-    { id: 'golden', name: 'Golden', price: SPRITE_PRICES[4], body: '#FFE7A0', hi: '#FFFFFF', rim: '#E8B923', trail: '255,224,120', blurb: 'Halo and sparkle.', extra: 'halo' }
+    { id: 'golden', name: 'Golden', price: SPRITE_PRICES[4], body: '#FFE7A0', hi: '#FFFFFF', rim: '#E8B923', trail: '255,224,120', blurb: 'Halo and sparkle.', extra: 'halo' },
+    { id: 'clown', name: 'Clown', price: SPRITE_PRICES[5], body: '#FFF1E8', hi: '#FFFFFF', trail: '255,241,232', blurb: 'Red nose, big grin.', face: 'clown', extra: 'clownhair' },
+    { id: 'dapper', name: 'Dapper', price: SPRITE_PRICES[6], body: '#B8A2FF', hi: '#E4DAFF', trail: '184,162,255', blurb: 'Top hat and round specs.', face: 'glasses', extra: 'tophat' },
+    { id: 'scrappy', name: 'Scrappy', price: SPRITE_PRICES[7], body: '#D9A066', hi: '#F0C79A', trail: '217,160,102', blurb: 'Battle scar, wild hair.', face: 'scar', extra: 'frizz' },
+    { id: 'volt', name: 'Volt', price: SPRITE_PRICES[8], body: '#4DA6FF', hi: '#B8E0FF', trail: '77,166,255', blurb: 'Fully charged.', extra: 'volt' }
   ];
   for (const s of SPRITES) s.kind = 'sprite';
   UNLOCKABLES.push(...SPRITES);
@@ -1325,6 +2311,156 @@
         g.fill();
         break;
       }
+      case 'clownhair': {
+        // a puffy tuft of wig on each side of the head
+        for (const sd of [-1, 1]) {
+          const x0 = sd * 11.5, y0 = -hh - 1;
+          g.fillStyle = '#E8482C';
+          for (const [dx, dy, r] of [[0, 0, 6.2], [sd * 3.6, 3, 4.4], [-sd * 2.4, -4.2, 4.6]]) { g.beginPath(); g.arc(x0 + dx, y0 + dy, r, 0, Math.PI * 2); g.fill(); }
+          g.fillStyle = '#FF8A5C';
+          g.beginPath(); g.arc(x0 - sd * 1.6, y0 - 2.6, 2.1, 0, Math.PI * 2); g.fill();
+        }
+        break;
+      }
+      case 'tophat': {
+        // a top hat with a gold band, set at a jaunty angle; a light edge keeps it readable on dark maps
+        const yb = -hh;
+        g.translate(0, yb);
+        g.rotate(-0.1);
+        g.fillStyle = '#343850';
+        rrg(g, -8.5, -17, 17, 16, 2.5); g.fill();
+        rrg(g, -13.5, -3.6, 27, 4.6, 2); g.fill();
+        g.fillStyle = '#FFC933';
+        g.fillRect(-8.5, -7, 17, 3.6);
+        g.fillStyle = '#5A5F82';
+        g.fillRect(-6.4, -15.4, 2.2, 7);
+        g.strokeStyle = 'rgba(205,210,240,0.9)';
+        g.lineWidth = 1;
+        rrg(g, -8.5, -17, 17, 16, 2.5); g.stroke();
+        rrg(g, -13.5, -3.6, 27, 4.6, 2); g.stroke();
+        break;
+      }
+      case 'frizz': {
+        // wild, frizzy hair: a cloud of curly tufts over the head that quivers a little, plus a few loose curls
+        const puffs = [[-13, -hh + 1.5, 5.2], [-7.5, -hh - 3.5, 6], [0, -hh - 6.5, 6.6], [7.5, -hh - 4, 6], [13.5, -hh + 1.5, 5.2], [-3.5, -hh - 1, 5], [4, -hh - 0.5, 5]];
+        const q = (i) => (t ? 1 + Math.sin(t * 7 + i * 1.7) * 0.06 : 1);
+        g.fillStyle = '#8A4519';
+        puffs.forEach(([x, y, r], i) => { g.beginPath(); g.arc(x + 0.8, y + 1.4, r * q(i), 0, Math.PI * 2); g.fill(); });
+        g.fillStyle = '#C4692A';
+        puffs.forEach(([x, y, r], i) => { g.beginPath(); g.arc(x, y, r * q(i), 0, Math.PI * 2); g.fill(); });
+        g.fillStyle = '#E58F45';
+        for (const [x, y, r] of puffs.slice(0, 5)) { g.beginPath(); g.arc(x - r * 0.3, y - r * 0.35, r * 0.34, 0, Math.PI * 2); g.fill(); }
+        g.strokeStyle = '#C4692A';
+        g.lineWidth = 2;
+        g.lineCap = 'round';
+        g.beginPath(); g.arc(-17.5, -hh - 4, 2.9, Math.PI * 0.3, Math.PI * 1.7); g.stroke();
+        g.beginPath(); g.arc(17.8, -hh - 5, 2.9, Math.PI * 1.3, Math.PI * 2.7); g.stroke();
+        g.beginPath(); g.arc(-2, -hh - 14, 2.6, Math.PI * 0.8, Math.PI * 2.2); g.stroke();
+        break;
+      }
+      case 'volt': {
+        // electrified: a soft glow, hair made of little lightning bolts, and short arcs that flicker off the body
+        // (about 10 a second, re-rolled from a hash, so it is deterministic; with reduced motion it holds still)
+        const slot = t ? Math.floor(t * 10) : 0, sd0 = slot * 131 + 7;
+        g.fillStyle = 'rgba(120,225,255,0.13)';
+        g.beginPath(); g.arc(0, 0, 27, 0, Math.PI * 2); g.fill();
+        g.lineCap = 'round';
+        g.lineJoin = 'round';
+        [[-8.5, 1, 12], [0, -1, 16], [8.5, 1, 11]].forEach(([bx, sg, ht], i) => {
+          const j = t ? (hash01(sd0 + 90 + i) - 0.5) * 2.4 : 0;
+          g.beginPath();
+          g.moveTo(bx, -hh + 1);
+          g.lineTo(bx + 3.2 * sg, -hh - ht * 0.42);
+          g.lineTo(bx - 1.8 * sg + j, -hh - ht * 0.62);
+          g.lineTo(bx + 2.4 * sg + j, -hh - ht);
+          g.strokeStyle = 'rgba(120,225,255,0.5)'; g.lineWidth = 4; g.stroke();
+          g.strokeStyle = '#FFF27A'; g.lineWidth = 2.2; g.stroke();
+          g.strokeStyle = '#FFFFFF'; g.lineWidth = 0.9; g.stroke();
+        });
+        for (let i = 0; i < 3; i++) {
+          if (t && hash01(sd0 + i * 17) < 0.3) continue;
+          const a = hash01(sd0 + i * 53 + 3) * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
+          const x0 = dx * (hw + 0.5), y0 = dy * (hh + 0.5), len = 8 + hash01(sd0 + i * 29) * 8;
+          g.beginPath();
+          g.moveTo(x0, y0);
+          for (let k = 1; k <= 3; k++) {
+            const f = k / 3, jit = (hash01(sd0 + i * 71 + k) - 0.5) * 7 * Math.sin(Math.PI * f);
+            g.lineTo(x0 + dx * len * f - dy * jit, y0 + dy * len * f + dx * jit);
+          }
+          g.strokeStyle = 'rgba(120,225,255,0.45)'; g.lineWidth = 3.4; g.stroke();
+          g.strokeStyle = '#F4FDFF'; g.lineWidth = 1.1; g.stroke();
+        }
+        break;
+      }
+    }
+    g.restore();
+  }
+
+  // Face details for the skins that have them (clown make-up, glasses, a scar). They are drawn in the body's own frame
+  // (origin at the body centre, +y towards the feet, flipped with gravity exactly like the eyes) so they stay on the
+  // eyes; the head extras above ease over when gravity flips, the face does not. Skins without a face are untouched.
+  function paintSpriteFace(g, sp, cx, cy, w, h, dir) {
+    if (!sp.face) return;
+    const e1 = -0.16 * w, e2 = 0.22 * w, ey = 3, hw = w / 2, mid = (e1 + e2) / 2;
+    g.save();
+    g.translate(cx, cy);
+    g.scale(1, dir);
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    switch (sp.face) {
+      case 'clown': {
+        g.fillStyle = 'rgba(232,72,60,0.4)';                    // rosy cheeks
+        for (const cxp of [e1 - 6.2, e2 + 5.6]) { g.beginPath(); g.arc(cxp, ey + 6.4, 2.7, 0, Math.PI * 2); g.fill(); }
+        g.fillStyle = '#3E8BFF';                                 // diamonds of eye make-up
+        for (const e of [e1, e2]) {
+          g.beginPath();
+          g.moveTo(e, ey - 12); g.lineTo(e + 2.8, ey - 8); g.lineTo(e, ey - 4.6); g.lineTo(e - 2.8, ey - 8);
+          g.closePath(); g.fill();
+        }
+        g.strokeStyle = '#D7263D';                               // the big grin
+        g.lineWidth = 1.9;
+        g.beginPath(); g.moveTo(mid - 7.4, ey + 9.6); g.quadraticCurveTo(mid, ey + 14.6, mid + 7.4, ey + 9.6); g.stroke();
+        g.fillStyle = '#FF3B3B';                                 // and the red nose
+        g.beginPath(); g.arc(mid, ey + 6.6, 3.7, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#FFFFFF'; g.globalAlpha = 0.85;
+        g.beginPath(); g.arc(mid - 1.2, ey + 5.4, 1.1, 0, Math.PI * 2); g.fill();
+        g.globalAlpha = 1;
+        break;
+      }
+      case 'glasses': {
+        g.strokeStyle = '#E8B923';                               // arms to the sides of the head
+        g.lineWidth = 1.6;
+        g.beginPath();
+        g.moveTo(e1 - 5.4, ey - 0.6); g.lineTo(-hw + 0.5, ey - 1.2);
+        g.moveTo(e2 + 5.4, ey - 0.6); g.lineTo(hw - 0.5, ey - 1.2);
+        g.stroke();
+        for (const e of [e1, e2]) {                              // a light tint over each eye, in a gold frame
+          g.fillStyle = 'rgba(214,242,255,0.5)';
+          g.beginPath(); g.arc(e, ey, 5.6, 0, Math.PI * 2); g.fill();
+          g.strokeStyle = '#E8B923'; g.lineWidth = 1.7; g.stroke();
+          g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 1;
+          g.beginPath(); g.arc(e, ey, 3.9, Math.PI * 1.12, Math.PI * 1.5); g.stroke();
+        }
+        g.strokeStyle = '#E8B923'; g.lineWidth = 1.5;
+        g.beginPath(); g.moveTo(e1 + 5.5, ey - 1.4); g.quadraticCurveTo(mid, ey - 3.6, e2 - 5.5, ey - 1.4); g.stroke();
+        break;
+      }
+      case 'scar': {
+        const x0 = e1 - 6.4, y0 = ey - 9.5, x1 = e1 + 1.8, y1 = ey + 9.5;    // a raised scar slanting across the rear eye
+        g.strokeStyle = '#8E2F3D'; g.lineWidth = 2.7;
+        g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+        g.strokeStyle = '#E37A85'; g.lineWidth = 1.2;
+        g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+        const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy), nx = -dy / len, ny = dx / len;
+        g.strokeStyle = '#FBE9DC'; g.lineWidth = 1.1;              // stitch marks
+        g.beginPath();
+        for (const f of [0.22, 0.5, 0.78]) {
+          const px = x0 + dx * f, py = y0 + dy * f;
+          g.moveTo(px - nx * 2.7, py - ny * 2.7); g.lineTo(px + nx * 2.7, py + ny * 2.7);
+        }
+        g.stroke();
+        break;
+      }
     }
     g.restore();
   }
@@ -1346,6 +2482,7 @@
     g.fillStyle = th.deep;
     g.beginPath(); g.arc(x + w * 0.34, y + h / 2 + 3, 3.6, 0, Math.PI * 2); g.fill();
     g.beginPath(); g.arc(x + w * 0.72, y + h / 2 + 3, 3.6, 0, Math.PI * 2); g.fill();
+    paintSpriteFace(g, sp, 44, y + h / 2, w, h, 1);
     paintSpriteExtras(g, sp, 44, y + h / 2, w, h, 1, 0);
   }
 
@@ -1374,9 +2511,11 @@
       equipSprite(s);
       refreshSpriteCards();
       spriteMsg.textContent = s.name + ' equipped.';
+      revealSpriteCard(card);
       return;
     }
     buyTap(s, card, spriteMsg, refreshSpriteCards, equipSprite);   // a new skin is equipped right away
+    revealSpriteCard(card);
   });
 
   // ----- settings -----
@@ -1386,6 +2525,16 @@
     setSound.classList.toggle('on', soundOn);
     setSoundLbl.textContent = soundOn ? 'On' : 'Off';
     setSoundDesc.textContent = ytInPlayables() && !ytAudioEnabled ? 'Muted by YouTube right now' : 'Music and sound effects';
+    syncMusicUi();
+  }
+
+  // The Music switch follows the Sound switch: with Sound off there is nothing to hear, so it is greyed out.
+  function syncMusicUi() {
+    setMusic.setAttribute('aria-checked', musicOn ? 'true' : 'false');
+    setMusic.classList.toggle('on', musicOn);
+    setMusic.disabled = !soundOn;
+    setMusicLbl.textContent = musicOn ? 'On' : 'Off';
+    setMusicDesc.textContent = soundOn ? 'Turn off to keep sound effects only' : 'Turn Sound on to hear music';
   }
 
   // One switch for the pause menu and the Settings screen.
@@ -1401,6 +2550,23 @@
       else pauseMusic();
     } else {
       pauseMusic();
+    }
+  }
+
+  // Mutes or restores the music only. Sound effects are not touched, so a short blip confirms they still play.
+  function toggleMusic() {
+    if (!soundOn) return;
+    musicOn = !musicOn;
+    store.set('flipside-music', musicOn ? 'on' : 'off');
+    syncMusicUi();
+    if (musicOn) {
+      ensureMusic();
+      beep(520, 780, 0.08, 'square', 0.055);
+      if (state === 'playing') startMusic();
+      else pauseMusic();
+    } else {
+      pauseMusic();
+      beep(780, 520, 0.08, 'square', 0.055);
     }
   }
 
@@ -1420,6 +2586,7 @@
     buildSpriteCards();
     overlay.hidden = true;
     spriteOverlay.hidden = false;
+    scrollPickedSpriteIntoView();
   }
 
   function showSettings() {
@@ -1440,6 +2607,7 @@
   spriteBack.addEventListener('click', backToHome);
   setBack.addEventListener('click', backToHome);
   setSound.addEventListener('click', toggleSound);
+  setMusic.addEventListener('click', toggleMusic);
 
   initWallet();
 
@@ -1653,7 +2821,7 @@
   }
 
   function startMusic() {
-    if (!soundOn || (ytInPlayables() && !ytAudioEnabled)) return;
+    if (!soundOn || !musicOn || (ytInPlayables() && !ytAudioEnabled)) return;
 
     const a = audio();
     if (a && a.state === 'suspended') {
@@ -2182,14 +3350,430 @@
   }
   function circle(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
 
-  function drawBackdrop() {
-    ctx.fillStyle = T.hill;
-    const span = W + 500;
-    for (let i = 0; i < 4; i++) {
-      const x = ((((i * span) / 4 - world * 0.06) % span) + span) % span - 250;
-      const y = TOP + 60 + ((i * 131) % Math.max(40, CORR - 160));
-      circle(x, y, 110 + ((i * 47) % 60));
+  // A night skyline in place of the soft hill-blobs the other maps use. Anchored to both walls (like real
+  // buildings), since this game's floor and ceiling are symmetric. Deterministic (no Math.random): the same
+  // pattern scrolls past every time, it does not reshuffle every frame. Plain fillRects only, no clipping or
+  // paths, so this costs less per frame than the 4 blurred hill circles it replaces.
+  function drawSkyline() {
+    const th = T, span = W + 420;
+    for (let i = 0; i < 6; i++) {
+      const seed = i * 71 + 19;
+      const bw = (40 + (seed % 54)) * K;
+      const bh = 46 + ((seed * 7) % Math.max(40, CORR * 0.34));
+      const x = ((((i * span) / 6 - world * 0.05) % span) + span) % span - 210;
+      const fromTop = i % 2 === 0;
+      const y = fromTop ? TOP : BOT - bh;
+      ctx.fillStyle = th.skyFar;
+      ctx.fillRect(x, y, bw, bh);
+      const nWin = 2 + (seed % 3);
+      ctx.fillStyle = th.winFar;
+      for (let k = 0; k < nWin; k++) {
+        const wseed = seed * 13 + k * 29;
+        const wx = x + 5 + (wseed % Math.max(1, bw - 8));
+        const wy = y + 5 + ((wseed * 7) % Math.max(1, bh - 8));
+        ctx.fillRect(wx, wy, 3, 3);
+      }
     }
+  }
+
+  // Distant volcanoes for the Magma map: dark cones with a glowing crater, one row on the ceiling and one on the
+  // floor (the corridor is symmetric, like the skyline). Deterministic, so the same silhouettes scroll past.
+  function drawVolcanoes() {
+    const th = T, span = W + 520, wK = Math.max(0.8, K);
+    for (let i = 0; i < 5; i++) {
+      const seed = i * 67 + 23;
+      const bw = (170 + (seed % 90)) * wK;
+      const bh = 70 + ((seed * 5) % Math.max(40, CORR * 0.3));
+      const x = ((((i * span) / 5 - world * 0.05) % span) + span) % span - 260;
+      const d = i % 2 === 0 ? 1 : -1;                  // 1 = hangs from the ceiling, -1 = rises from the floor
+      const y0 = d === 1 ? TOP : BOT, tw = bw * 0.2, sx = x + (bw - tw) / 2, sy = y0 + d * bh;
+      ctx.fillStyle = th.mountFar;
+      ctx.beginPath();
+      ctx.moveTo(x, y0); ctx.lineTo(sx, sy); ctx.lineTo(sx + tw, sy); ctx.lineTo(x + bw, y0);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = th.craterGlow;                   // a glowing summit, and a thin lava flow down one side
+      ctx.fillRect(sx, d === 1 ? sy - 5 : sy, tw, 5);
+      ctx.strokeStyle = th.craterGlow;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sx + tw * 0.2, sy);
+      ctx.lineTo(sx + (x - sx) * 0.3 + tw * 0.2, sy + (y0 - sy) * 0.42);
+      ctx.stroke();
+    }
+  }
+
+  // A few embers drifting up and back through the corridor. Positions come from the scroll, so nothing is random.
+  function drawEmbers() {
+    const span = W + 80;
+    ctx.fillStyle = T.ember;
+    for (let i = 0; i < 16; i++) {
+      const x = ((((i * 137) % span) - world * (0.18 + (i % 4) * 0.05)) % span + span) % span - 20;
+      const y = BOT - ((world * (0.22 + (i % 3) * 0.08) + i * 61) % CORR);
+      ctx.globalAlpha = 0.25 + 0.1 * ((i * 7) % 5);
+      const sz = 2 + (i % 3);
+      ctx.fillRect(x, y, sz, sz);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Distant glacier peaks for the Glaciers map: white ridges with a cool shaded face, one row on the ceiling and one
+  // on the floor (the corridor is symmetric, like the skyline). Deterministic, so the same peaks scroll past.
+  function drawPeaks() {
+    const th = T, span = W + 520, wK = Math.max(0.8, K);
+    for (let i = 0; i < 5; i++) {
+      const seed = i * 61 + 17;
+      const bw = (210 + (seed % 100)) * wK;
+      const bh = 80 + ((seed * 5) % Math.max(40, CORR * 0.32));
+      const x = ((((i * span) / 5 - world * 0.05) % span) + span) % span - 260;
+      const d = i % 2 === 0 ? 1 : -1;                  // 1 = hangs from the ceiling, -1 = rises from the floor
+      const y0 = d === 1 ? TOP : BOT, px = x + bw * (0.36 + (seed % 20) / 100), py = y0 + d * bh;
+      ctx.fillStyle = th.peakShade;
+      ctx.beginPath();
+      ctx.moveTo(x, y0); ctx.lineTo(px, py); ctx.lineTo(x + bw, y0);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = th.peakLight;                    // the sunlit face
+      ctx.beginPath();
+      ctx.moveTo(x, y0); ctx.lineTo(px, py); ctx.lineTo(px + bw * 0.1, y0);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  // Distant reef mounds for the Ocean map: rounded silhouettes with a lit crown, one row on the ceiling and one on
+  // the floor (the corridor is symmetric, like the skyline and the glacier peaks). Deterministic, so the same
+  // shapes scroll past.
+  function drawReef() {
+    const th = T, span = W + 480, wK = Math.max(0.8, K);
+    for (let i = 0; i < 5; i++) {
+      const seed = i * 53 + 11;
+      const bw = (150 + (seed % 90)) * wK;
+      const bh = 46 + ((seed * 5) % Math.max(30, CORR * 0.22));
+      const x = ((((i * span) / 5 - world * 0.05) % span) + span) % span - 240;
+      const d = i % 2 === 0 ? 1 : -1;                  // 1 = hangs from the ceiling, -1 = rises from the floor
+      const y0 = d === 1 ? TOP : BOT, cxp = x + bw * (0.4 + (seed % 20) / 100), yp = y0 + d * bh;
+      ctx.fillStyle = th.sandFar;
+      ctx.beginPath();
+      ctx.moveTo(x, y0);
+      ctx.quadraticCurveTo(cxp, yp, x + bw, y0);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = th.hill;
+      ctx.beginPath();
+      ctx.moveTo(x + bw * 0.14, y0);
+      ctx.quadraticCurveTo(cxp, yp + d * 6, x + bw * 0.42, y0);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  // Distant islets for the Lighthouse map: low dark humps breaking the horizon with a faint moonlit rim, one row
+  // on the ceiling and one on the floor (the corridor is symmetric, like the skyline and the reef). Deterministic,
+  // so the same shapes scroll past every time.
+  function drawIslands() {
+    const th = T, span = W + 480, wK = Math.max(0.8, K);
+    for (let i = 0; i < 5; i++) {
+      const seed = i * 59 + 13;
+      const bw = (140 + (seed % 90)) * wK;
+      const bh = 34 + ((seed * 5) % Math.max(24, CORR * 0.16));
+      const x = ((((i * span) / 5 - world * 0.05) % span) + span) % span - 240;
+      const d = i % 2 === 0 ? 1 : -1;                  // 1 = hangs from the ceiling, -1 = rises from the floor
+      const y0 = d === 1 ? TOP : BOT, cxp = x + bw * (0.4 + (seed % 20) / 100), yp = y0 + d * bh;
+      ctx.fillStyle = th.islandFar;
+      ctx.beginPath();
+      ctx.moveTo(x, y0);
+      ctx.quadraticCurveTo(cxp, yp, x + bw, y0);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = th.hill;
+      ctx.beginPath();
+      ctx.moveTo(x + bw * 0.18, y0);
+      ctx.quadraticCurveTo(cxp, yp + d * 5, x + bw * 0.46, y0);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  // Bubbles rising through the whole corridor, giving the Ocean map its underwater feel even far from the sprite.
+  // Positions come from the scroll and the clock (like the snow), so nothing is random and nothing is allocated
+  // per frame. Fewer bubbles in low-power mode, and they hold still with reduced motion.
+  function drawOceanBubbles() {
+    const n = lite ? 14 : 34, span = W + 60;
+    ctx.fillStyle = T.bubble;
+    for (let pass = 0; pass < 2; pass++) {
+      ctx.globalAlpha = pass ? 0.85 : 0.4;
+      for (let i = pass; i < n; i += 2) {
+        const r = pass ? 1.8 + (i % 3) * 0.8 : 1 + (i % 3) * 0.5;
+        const sway = reduce ? 0 : Math.sin(clock * 1.4 + i * 1.7) * (3 + (i % 4));
+        const x = ((((i * 83) % span) - world * (0.12 + (i % 5) * 0.03) + sway) % span + span) % span - 30;
+        const rise = 24 + (i % 4) * 9;
+        const y = BOT - ((((i * 71) + (reduce ? 0 : clock * rise)) % CORR) + CORR) % CORR;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Stars scattered through the whole corridor for the Lighthouse map: fixed points that twinkle smoothly (a sine,
+  // never a strobe) and drift back with the scroll, far slower than anything in the foreground (like the distant
+  // hill blobs). Nothing is random and nothing is allocated per frame. Fewer stars in low-power mode, and they
+  // hold still with reduced motion.
+  function drawStars() {
+    const n = lite ? 18 : 46, span = W + 40;
+    for (let i = 0; i < n; i++) {
+      const x = ((((i * 101) % span) - world * (0.05 + (i % 5) * 0.015)) % span + span) % span - 20;
+      const y = TOP + ((i * 67) % Math.max(1, CORR));
+      const tw = reduce ? 0.7 : 0.45 + 0.55 * Math.sin(clock * (1.4 + (i % 4) * 0.5) + i * 2.3);
+      ctx.globalAlpha = 0.25 + 0.6 * tw;
+      ctx.fillStyle = T.star;
+      const sz = 1 + (i % 3) * 0.7;
+      ctx.fillRect(x, y, sz, sz);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Soft mist banks drifting through the corridor for the Lighthouse map: a handful of low-alpha wisps that sway
+  // sideways and hold still with reduced motion. Purely decorative and layered thin, so it reads as haze rather
+  // than fog blotting out the obstacles. Skipped entirely in low-power mode, like the ocean's caustics.
+  function drawMist() {
+    if (lite) return;
+    const n = 6, span = W + 300;
+    ctx.fillStyle = T.mist;
+    for (let i = 0; i < n; i++) {
+      const x = ((((i * span) / n - world * (0.1 + (i % 3) * 0.03)) % span) + span) % span - 150;
+      const y = TOP + 40 + ((i * 97) % Math.max(40, CORR - 80));
+      const rw = 130 + (i % 3) * 40, rh = 22 + (i % 2) * 10;
+      const drift = reduce ? 0 : Math.sin(clock * 0.35 + i * 1.9) * 14;
+      ctx.globalAlpha = 0.05 + 0.02 * (i % 3);
+      ctx.beginPath();
+      ctx.ellipse(x + drift, y, rw, rh, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Faint shafts of light slanting down through the water on the Ocean map. Purely decorative and very subtle.
+  function drawCaustics() {
+    if (lite) return;
+    const span = W + 200;
+    ctx.fillStyle = T.ray;
+    for (let i = 0; i < 4; i++) {
+      const x = ((((i * span) / 4 - world * 0.15) % span) + span) % span - 60;
+      const rw = 46 + (i % 2) * 20;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x, TOP); ctx.lineTo(x + rw, TOP); ctx.lineTo(x + rw * 0.4, BOT); ctx.lineTo(x - rw * 0.4, BOT);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Snow drifting through the corridor: it falls and sways with the clock and slides back with the scroll. Nothing
+  // is random and nothing is allocated per frame; two fills (far flakes, then near ones) draw all of it. Fewer
+  // flakes in low-power mode, and it holds still if the player asked for reduced motion.
+  function drawSnow() {
+    const n = lite ? 16 : 56, span = W + 60;
+    ctx.fillStyle = T.snow;
+    for (let pass = 0; pass < 2; pass++) {
+      ctx.globalAlpha = pass ? 0.95 : 0.6;
+      ctx.beginPath();
+      for (let i = pass; i < n; i += 2) {
+        const r = pass ? 2.5 + (i % 3) * 0.8 : 1.4 + (i % 3) * 0.5;
+        const sway = reduce ? 0 : Math.sin(clock * 0.9 + i) * 9;
+        const x = ((((i * 89) % span) - world * ((pass ? 0.5 : 0.25) + (i % 5) * 0.03) + sway) % span + span) % span - 30;
+        const y = TOP + ((((i * 53) + (reduce ? 0 : clock * (16 + (i % 4) * 7))) % CORR) + CORR) % CORR;
+        ctx.moveTo(x + r, y);
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // A cheap deterministic hash to a number in [0, 1). The Tesla effects use it instead of Math.random, so a given coil
+  // and time slot always give the same arc: nothing reshuffles between frames and nothing is allocated.
+  function hash01(n) {
+    n = Math.imul(n ^ (n >>> 15), 0x2c1b3c6d);
+    n = Math.imul(n ^ (n >>> 12), 0x297a2d39);
+    return ((n ^ (n >>> 15)) >>> 0) / 4294967296;
+  }
+
+  // One jagged arc snapping out of a coil's terminal ball: a glow stroke under a thin white-hot core, and a short fork.
+  function coilArc(bx, by, dir, br, s, sc) {
+    const ang = (hash01(s) - 0.5) * 2.4;                       // radians off the tip's direction, either way
+    const dx = Math.sin(ang), dy = dir * Math.cos(ang);
+    const len = (28 + hash01(s + 1) * 46) * sc, seg = 7;
+    let jx = 0, jy = 0;
+    ctx.beginPath();
+    ctx.moveTo(bx + dx * br, by + dy * br);
+    for (let k = 1; k <= seg; k++) {
+      const f = k / seg, j = (hash01(s + 10 + k) - 0.5) * 18 * sc * Math.sin(Math.PI * f);
+      const x = bx + dx * (br + len * f) - dy * j, y = by + dy * (br + len * f) + dx * j;
+      ctx.lineTo(x, y);
+      if (k === 3) { jx = x; jy = y; }
+    }
+    const fa = ang + (hash01(s + 4) < 0.5 ? -0.9 : 0.9), fx = Math.sin(fa), fy = dir * Math.cos(fa), fl = len * 0.42;
+    ctx.moveTo(jx, jy);
+    ctx.lineTo(jx + fx * fl * 0.5 + (hash01(s + 5) - 0.5) * 8 * sc, jy + fy * fl * 0.5 + (hash01(s + 6) - 0.5) * 8 * sc);
+    ctx.lineTo(jx + fx * fl, jy + fy * fl);
+    ctx.strokeStyle = T.arc; ctx.lineWidth = 5; ctx.globalAlpha = 0.28; ctx.stroke();
+    ctx.strokeStyle = T.arcCore; ctx.lineWidth = 1.6; ctx.globalAlpha = 1; ctx.stroke();
+  }
+
+  // Live lightning for the Tesla map, drawn over the cached coil sprites: a pulsing glow round each coil's ring and
+  // terminal ball, and jagged arcs that snap out of the ball about 13 times a second (re-rolled from a hash of the
+  // coil's own seed and the time slot). The arcs are decoration: the hitbox is the coil itself. With reduced motion
+  // only the steady glow is drawn, and low-power mode draws fewer arcs and skips the ring glow.
+  function drawCoilFx() {
+    const sc = Math.max(0.8, K);
+    for (const o of obstacles) {
+      const L = o.look;
+      if (!L || L.kind !== 'coil' || o.x > W + 80 || o.x + o.w < -80) continue;
+      const fl = o.side === 'floor', dir = fl ? -1 : 1;
+      const Y = (t) => (fl ? BOT - t : TOP + t);              // height above the wall -> screen y
+      const cxs = o.x + L.cx, by = Y(L.ballMid);
+      const pulse = reduce ? 0.85 : 0.75 + 0.25 * Math.sin(clock * 6 + L.seed);
+      ctx.fillStyle = T.arc;
+      ctx.globalAlpha = 0.07 * pulse; circle(cxs, by, L.br * 3.6);
+      ctx.globalAlpha = 0.11 * pulse; circle(cxs, by, L.br * 2.4);
+      ctx.globalAlpha = 0.2 * pulse; circle(cxs, by, L.br * 1.5);
+      if (!lite) {
+        ctx.fillStyle = T.violet;
+        ctx.globalAlpha = 0.08 * pulse;
+        ctx.beginPath(); ctx.ellipse(cxs, Y(L.torMid), L.hwT * 1.35, L.tt * 1.6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.1 * pulse;
+        ctx.beginPath(); ctx.ellipse(cxs, Y(L.torMid), L.hwT * 1.1, L.tt * 0.95, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      if (reduce) continue;
+      const s = L.seed * 31 + Math.floor(clock * 13) * 7919;
+      if (hash01(s) < 0.72) coilArc(cxs, by, dir, L.br, s + 1, sc);
+      if (!lite && hash01(s + 5) < 0.32) coilArc(cxs, by, dir, L.br, s + 9, sc);
+      ctx.fillStyle = T.arcCore;                              // a few sparks flung off the terminal
+      for (let k = 0; k < 3; k++) {
+        const a = hash01(s + 30 + k) * Math.PI * 2, r = L.br * (1.4 + hash01(s + 40 + k) * 2.2);
+        ctx.globalAlpha = 0.9;
+        ctx.fillRect(cxs + Math.cos(a) * r - 1, by + Math.sin(a) * r - 1, 2, 2);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Rotating light for the Lighthouse map, drawn over the cached tower sprites: a slow sweeping beam from each lamp
+  // room, plus a soft halo. The sweep is decoration only, never the hitbox (that's the tower's own silhouette).
+  // With reduced motion the beam holds at a fixed heading instead of turning, so the lamp still reads as lit; the
+  // full sweep still passes behind the corridor walls at some angles, same as any obstacle would. Low-power mode
+  // skips the second, brighter layer of the halo and beam.
+  function drawLighthouseBeam() {
+    const period = 5.2, len = Math.hypot(W, CORR) * 0.55;
+    for (const o of obstacles) {
+      const L = o.look;
+      if (!L || L.kind !== 'lighthouse' || o.x > W + 200 || o.x + o.w < -200) continue;
+      const fl = o.side === 'floor';
+      const Y = (t) => (fl ? BOT - t : TOP + t);              // height above the wall -> screen y
+      const bx = o.x + L.cx, by = Y(L.lampMid);
+      const phase = (L.seed % 1000) * 0.00628;
+      const ang = reduce ? phase : (clock * (Math.PI * 2 / period) + phase) % (Math.PI * 2);
+      ctx.fillStyle = T.beamCore;
+      ctx.globalAlpha = 0.14; circle(bx, by, L.lampHW * 2.8);
+      if (!lite) { ctx.globalAlpha = 0.08; circle(bx, by, L.lampHW * 4.6); }
+      const wedge = (a, spread) => {
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx + Math.cos(a - spread) * len, by + Math.sin(a - spread) * len);
+        ctx.lineTo(bx + Math.cos(a + spread) * len, by + Math.sin(a + spread) * len);
+        ctx.closePath(); ctx.fill();
+      };
+      ctx.fillStyle = T.beam;
+      ctx.globalAlpha = 0.09;
+      wedge(ang, 0.2); wedge(ang + Math.PI, 0.2);
+      if (!lite) {
+        ctx.fillStyle = T.beamCore;
+        ctx.globalAlpha = 0.15;
+        wedge(ang, 0.05); wedge(ang + Math.PI, 0.05);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // The Tesla sky. A thin charged rail runs along each wall with pulses of current riding it (they scroll with the
+  // world), and every few seconds a dim forked bolt flickers out from one wall with the faintest brightening of the
+  // sky. Two quick flickers about every 3.4 s is far under the three-flashes-a-second limit for photosensitive
+  // players, the brightening is tiny, and with reduced motion there is no lightning at all.
+  function drawStorm() {
+    const span = W + 240;
+    ctx.fillStyle = T.arc;
+    if (!lite) {                                               // charged air: a stepped glow fading in from each rail
+      ctx.globalAlpha = 0.045;
+      for (let k = 1; k <= 4; k++) { ctx.fillRect(0, TOP, W, k * 9); ctx.fillRect(0, BOT - k * 9, W, k * 9); }
+    }
+    ctx.globalAlpha = 0.2;
+    ctx.fillRect(0, TOP, W, 2);
+    ctx.fillRect(0, BOT - 2, W, 2);
+    ctx.globalAlpha = 0.55;
+    for (let i = 0; i < 3; i++) {
+      ctx.fillRect(((((i * span) / 3 - world * 0.9) % span) + span) % span - 120, TOP, 70, 2);
+      ctx.fillRect(((((i * span) / 3 + span / 6 - world * 0.7) % span) + span) % span - 120, BOT - 2, 70, 2);
+    }
+    ctx.globalAlpha = 1;
+    if (reduce) return;
+    const period = 3.4, slot = Math.floor(clock / period), ph = clock - slot * period;
+    const f = ph < 0.05 ? 1 : ph < 0.1 ? 0.2 : ph < 0.17 ? 0.8 : ph < 0.32 ? 0.8 * (1 - (ph - 0.17) / 0.15) : 0;
+    if (f <= 0) return;
+    const s = slot * 977 + 13, fromTop = slot % 2 === 0, dir = fromTop ? 1 : -1, sc = Math.max(0.8, K);
+    ctx.globalAlpha = 0.06 * f;
+    ctx.fillRect(0, TOP, W, CORR);                             // the faint brightening of the sky
+    let x = W * (0.12 + 0.76 * hash01(s)), y = fromTop ? TOP : BOT, fx = x, fy = y, gx = x, gy = y;
+    const len = CORR * (0.5 + 0.25 * hash01(s + 1)), seg = 10;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let k = 1; k <= seg; k++) {
+      x += (hash01(s + 20 + k) - 0.5) * 38 * sc;
+      y += (dir * len) / seg;
+      ctx.lineTo(x, y);
+      if (k === 4) { fx = x; fy = y; }
+      if (k === 7) { gx = x; gy = y; }
+    }
+    ctx.moveTo(fx, fy);
+    ctx.lineTo(fx + (hash01(s + 3) < 0.5 ? -1 : 1) * len * 0.24, fy + dir * len * 0.22);
+    ctx.moveTo(gx, gy);
+    ctx.lineTo(gx + (hash01(s + 4) < 0.5 ? -1 : 1) * len * 0.18, gy + dir * len * 0.16);
+    ctx.strokeStyle = T.arc; ctx.lineWidth = 7; ctx.globalAlpha = 0.26 * f; ctx.stroke();
+    ctx.strokeStyle = T.arcCore; ctx.lineWidth = 1.8; ctx.globalAlpha = 0.85 * f; ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Sparks of static drifting through the corridor: they rise slowly with the clock, slide back with the scroll and
+  // twinkle smoothly (a sine, never a strobe). Fewer in low-power mode; they hold still with reduced motion.
+  function drawSparks() {
+    const n = lite ? 12 : 40, span = W + 40;
+    for (let i = 0; i < n; i++) {
+      const x = ((((i * 97) % span) - world * (0.12 + (i % 5) * 0.04)) % span + span) % span - 20;
+      const y = TOP + ((((i * 61) + (reduce ? 0 : clock * (5 + (i % 4) * 3))) % CORR) + CORR) % CORR;
+      const tw = reduce ? 0.7 : 0.55 + 0.45 * Math.sin(clock * (2 + (i % 4)) + i * 1.7);
+      ctx.globalAlpha = 0.25 + 0.55 * tw;
+      ctx.fillStyle = i % 3 === 0 ? T.violet : i % 3 === 1 ? T.arc : T.arcCore;
+      const sz = 2 + (i % 3) * 0.9;
+      ctx.fillRect(x, y, sz, sz);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawBackdrop() {
+    if (currentMap.style === 'city') {
+      drawSkyline();
+    } else {
+      ctx.fillStyle = T.hill;
+      const span = W + 500;
+      for (let i = 0; i < 4; i++) {
+        const x = ((((i * span) / 4 - world * 0.06) % span) + span) % span - 250;
+        const y = TOP + 60 + ((i * 131) % Math.max(40, CORR - 160));
+        circle(x, y, 110 + ((i * 47) % 60));
+      }
+      if (currentMap.style === 'lava') drawVolcanoes();
+      else if (currentMap.style === 'ice') drawPeaks();
+      else if (currentMap.style === 'coil') drawStorm();
+      else if (currentMap.style === 'ocean') drawReef();
+      else if (currentMap.style === 'lighthouse') drawIslands();
+    }
+    if (currentMap.style === 'ice') drawSnow();
+    else if (currentMap.style === 'coil') drawSparks();
+    else if (currentMap.style === 'ocean') { drawCaustics(); drawOceanBubbles(); }
+    else if (currentMap.style === 'lighthouse') { drawStars(); drawMist(); }
     if (lite) return;
     ctx.fillStyle = 'rgba(255,255,255,0.12)';
     const gs = 44;
@@ -2199,6 +3783,7 @@
       const shift = (row % 2) * gs / 2;
       for (let x = -off - shift; x < W + gs; x += gs) circle(x, y, 2.6);
     }
+    if (currentMap.style === 'lava') drawEmbers();
   }
 
   function drawObstacles() {
@@ -2290,6 +3875,26 @@
     }
   }
 
+  // A handful of bubbles streaming off the sprite on the Ocean map: they start right behind it (using the same
+  // position history the trail uses) and drift upward as they age, fading out. Purely decorative, drawn behind the
+  // sprite, and never touches the hitbox.
+  function drawPlayerBubbles() {
+    if (currentMap.style !== 'ocean' || lite || state !== 'playing') return;
+    const n = 7, cx = PX + S / 2;
+    ctx.fillStyle = T.bubble;
+    for (let i = 0; i < n; i++) {
+      const age = ((reduce ? 0 : clock) * 0.7 + i / n) % 1;          // 0 = just born, 1 = about to be recycled
+      const hk = Math.min(p.hist.length - 1, 1 + Math.floor(age * 5));
+      const baseY = (p.hist[hk] != null ? p.hist[hk] : p.y) + S / 2;
+      const x = cx - S * 0.4 - age * S * 1.1 + (reduce ? 0 : Math.sin(clock * 3.2 + i * 2.1) * 2.5);
+      const y = baseY - age * CORR * 0.4;
+      const r = 1.2 + (i % 3) * 0.7;
+      ctx.globalAlpha = (1 - age) * 0.8;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
   function drawSpeedLines() {
     if (speedMul < 1.06 || reduce) return;
     const a = clamp((speedMul - 1) / (BOOST_SPEED - 1), 0, 1) * 0.28;
@@ -2367,6 +3972,7 @@
     const ey = y + h / 2 + p.dir * 3;
     circle(x + w * 0.34, ey, 3.6);
     circle(x + w * 0.72, ey, 3.6);
+    paintSpriteFace(ctx, SP, x + w / 2, y + h / 2, w, h, p.dir);
     paintSpriteExtras(ctx, SP, x + w / 2, y + h / 2, w, h, spriteHead, reduce ? 0 : clock);
     ctx.globalAlpha = 1;
   }
@@ -2503,6 +4109,7 @@
     drawBackdrop();
     drawSpeedLines();
     drawObstacles();
+    if (currentMap.style === 'coil') drawCoilFx();
     drawOrbs();
     drawWalls();
     drawTrail();
@@ -2561,10 +4168,12 @@
     spriteOverlay.hidden = true;
     settingsOverlay.hidden = true;
     homeMenu.hidden = kind !== 'menu';
+    overlay.classList.toggle('home', kind === 'menu');
     if (kind === 'menu') {
       ovTitle.className = 'title';
       ovTitle.innerHTML = 'Flip<span class="flipped">side</span>';
-      ovText.innerHTML = 'Flip gravity to dodge the obstacles.<br>Grab coins to refuel your soul.<br>Tap the rocket for a free boost.<br>Tap, click or press Space.';
+      ovText.hidden = true;
+      ovText.textContent = '';
       if (best > 0) { ovStats.hidden = false; ovStats.innerHTML = '<div class="sub">Best ' + best + '</div>'; }
       ovBtn.textContent = 'Play';
     } else if (kind === 'over') {
